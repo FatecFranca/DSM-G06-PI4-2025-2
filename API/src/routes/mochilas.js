@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { obterMochilas, criarMochila, obterMochilaCodigo, obterMochilaId, excluirMochila, alterarMochila } from '../controllers/mochilas.js';
+import { criarMochila, obterMochilaCodigo, excluirMochila, alterarMochila } from '../controllers/mochilas.js';
 
 const r = Router();
 
@@ -15,11 +15,11 @@ JSON Example
 }
 */
 
-r.get('/', obterMochilas);
+//r.get('/', obterMochilas);
 
 r.get('/codigo/:codigo', obterMochilaCodigo);
 
-r.get('/id/:id', obterMochilaId);
+//r.get('/id/:id', obterMochilaId);
 
 r.put('/', alterarMochila);
 /*

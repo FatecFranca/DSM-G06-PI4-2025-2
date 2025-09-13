@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API - Alertas</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f9f9f9;
+            color: #333;
+        }
+
+        h1,
+        h2,
+        h3 {
+            color: #222;
+        }
+
+        .section {
+            margin-bottom: 40px;
+            padding: 20px;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        pre {
+            background: #eee;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+
+        a {
+            color: #0056b3;
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-top: 10px;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>⚠️ API - Alertas</h1>
+    <p>Esta é a documentação da API para a criação, listagem e gerenciamento de alertas relacionados às medições de
+        mochilas.</p>
+
+    <div class="section" id="endpoints">
+        <h2>🔗 Endpoints</h2>
+        <ul>
+            <li><a href="index.html">Voltar ao Menu</a></li>
+        </ul>
+        <ul>
+            <!--<li><a href="#post-criar">POST /alertas/criar</a> - Criar alerta</li>-->
+            <li><a href="#get-medicao">GET /alertas/medicao/:id</a> - Listar alertas por medição</li>
+            <li><a href="#get-id">GET /alertas/:id</a> - Obter alerta por ID</li>
+            <li><a href="#put-atualizar">PUT /alertas/:id</a> - Atualizar alerta</li>
+            <li><a href="#get-usuario">GET /alertas/usuario</a> - Listar alertas do usuário</li>
+            <li><a href="#delete-id">DELETE /alertas/:id</a> - Deletar alerta</li>
+        </ul>
+    </div>
+
+    <!--
+    <div class="section" id="post-criar">
+        <h2>📝 POST /alertas/criar</h2>
+        <p>Registra um novo alerta, geralmente gerado por uma medição que excede o limite. Este endpoint não requer autenticação de sessão e é geralmente usado por dispositivos IOT.</p>
+        <h3>Corpo da requisição:</h3>
+        <pre>{
+    "MedicaoId": 123,
+    "AlertaTitulo": "Peso acima do limite",
+    "AlertaDescricao": "A mochila excedeu o peso máximo.",
+    "AlertaNivel": "Crítico",
+    "AlertaStatus": "Enviar"
+}</pre>
+        <h3>Respostas:</h3>
+        <ul>
+            <li>`201 Created`: `{ "ok": true, "message": "Alerta criado com sucesso" }`</li>
+            <li>`400 Bad Request`: `{ "error": "ID da medição é obrigatório" }`, `{ "error": "O título do alerta é obrigatório" }`, etc.</li>
+            <li>`500 Internal Server Error`: `{ "error": "Erro ao criar alerta" }`</li>
+        </ul>
+        <a href="#endpoints" class="back-link">⬅ Voltar para Endpoints</a>
+    </div>
+-->
+
+    <div class="section" id="get-medicao">
+        <h2>📥 GET /alertas/medicao/:id</h2>
+        <p>Lista todos os alertas associados a uma medição específica, identificada pelo ID da medição.</p>
+        <h3>Parâmetros de URL:</h3>
+        <pre>/alertas/medicao/123</pre>
+        <h3>Respostas:</h3>
+        <ul>
+            <li>`200 OK`: Retorna um array de objetos de alerta.
+                <pre>[
+    {
+        "AlertaId": 456,
+        "MedicaoId": 123,
+        "AlertaTitulo": "Peso acima do limite",
+        "AlertaDescricao": "A mochila excedeu o peso máximo.",
+        "AlertaNivel": "Crítico",
+        "AlertaData": "2025-08-31T10:00:00.000Z",
+        "AlertaStatus": "Enviar"
+    },
+    ...
+]</pre>
+            </li>
+            <li>`400 Bad Request`: `{ "error": "ID da medição inválido" }`</li>
+            <li>`404 Not Found`: `{ "error": "Medição não encontrada" }`</li>
+            <li>`500 Internal Server Error`: `{ "error": "Erro ao listar alertas" }`</li>
+        </ul>
+        <a href="#endpoints" class="back-link">⬅ Voltar para Endpoints</a>
+    </div>
+
+    <div class="section" id="get-id">
+        <h2>🔎 GET /alertas/:id</h2>
+        <p>Obtém os detalhes de um alerta específico pelo seu ID.</p>
+        <h3>Parâmetros de URL:</h3>
+        <pre>/alertas/456</pre>
+        <h3>Respostas:</h3>
+        <ul>
+            <li>`200 OK`: Retorna o objeto do alerta.</li>
+            <li>`400 Bad Request`: `{ "error": "ID do alerta inválido" }`</li>
+            <li>`404 Not Found`: `{ "error": "Alerta não encontrado" }`</li>
+            <li>`500 Internal Server Error`: `{ "error": "Erro ao obter alerta" }`</li>
+        </ul>
+        <a href="#endpoints" class="back-link">⬅ Voltar para Endpoints</a>
+    </div>
+
+    <div class="section" id="put-atualizar">
+        <h2>🔄 PUT /alertas/:id</h2>
+        <p>Atualiza o status de um alerta existente. Apenas o status pode ser alterado.</p>
+        <h3>Parâmetros de URL:</h3>
+        <pre>/alertas/456</pre>
+        <h3>Corpo da requisição:</h3>
+        <pre>{
+    "AlertaStatus": "Lido"
+}</pre>
+        <h3>Respostas:</h3>
+        <ul>
+            <li>`200 OK`: `{ "ok": true, "message": "Alerta atualizado com sucesso" }`</li>
+            <li>`400 Bad Request`: `{ "error": "ID do alerta inválido" }` ou `{ "error": "Status de alerta inválido" }`
+            </li>
+            <li>`500 Internal Server Error`: `{ "error": "Erro ao atualizar alerta" }`</li>
+        </ul>
+        <a href="#endpoints" class="back-link">⬅ Voltar para Endpoints</a>
+    </div>
+
+    <div class="section" id="get-usuario">
+        <h2>👤 GET /alertas/usuario</h2>
+        <p>Lista todos os alertas associados ao usuário logado. Requer autenticação de sessão do usuário.</p>
+        <h3>Corpo da requisição:</h3>
+        <p>Não há corpo de requisição.</p>
+        <h3>Respostas:</h3>
+        <ul>
+            <li>`200 OK`: Retorna um array de alertas do usuário.</li>
+            <li>`401 Unauthorized`: `{ "error": "Sessão inválida" }`</li>
+            <li>`404 Not Found`: `{ "error": "Usuário não encontrado" }`</li>
+            <li>`500 Internal Server Error`: `{ "error": "Erro ao listar alertas" }`</li>
+        </ul>
+        <a href="#endpoints" class="back-link">⬅ Voltar para Endpoints</a>
+    </div>
+
+    <div class="section" id="delete-id">
+        <h2>❌ DELETE /alertas/:id</h2>
+        <p>Deleta um alerta específico pelo seu ID. Requer autenticação de sessão do usuário.</p>
+        <h3>Parâmetros de URL:</h3>
+        <pre>/alertas/456</pre>
+        <h3>Respostas:</h3>
+        <ul>
+            <li>`200 OK`: `{ "ok": true, "message": "Alerta deletado com sucesso" }`</li>
+            <li>`400 Bad Request`: `{ "error": "ID do alerta inválido" }`</li>
+            <li>`401 Unauthorized`: `{ "error": "Sessão inválida" }`</li>
+            <li>`404 Not Found`: `{ "error": "Alerta não encontrado" }`</li>
+            <li>`500 Internal Server Error`: `{ "error": "Erro ao deletar alerta" }`</li>
+        </ul>
+        <a href="#endpoints" class="back-link">⬅ Voltar para Endpoints</a>
+    </div>
+</body>
+
+</html>

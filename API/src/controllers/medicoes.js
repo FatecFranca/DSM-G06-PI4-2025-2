@@ -2,6 +2,26 @@ import { is } from 'zod/locales';
 import { prisma } from '../prisma.js';
 import { roundTo2, validarSessao, verificarSenha } from '../utils.js';
 
+// Validado (31/08/2025) - Para testes (Desativar)
+/*
+export async function obterMedicoes(req, res) {
+  try {
+    //const {UsuarioID} = req.body;
+    const medicoes = await prisma.medicoes.findMany({
+      orderBy: { MedicaoData:'desc'}
+    });
+
+    if (!medicoes){
+      return res.status(404).json({ error: 'Nenhuma medição encontrada' });
+    }
+
+    return res.status(200).json(medicoes);
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: 'Erro ao bucar medições' });
+  }
+}
+*/
 
 // Validado (31/08/2025)
 export async function criarMedicao(req, res) {
@@ -156,31 +176,12 @@ export async function criarMedicao(req, res) {
       });
     }
 
-    //return res.status(201).json({ ok: true, message: 'Medição registrada com sucesso' });
-    return res.status(201).json(medicao);
+    return res.status(201).json({ ok: true, message: 'Medição registrada com sucesso' });
+    //return res.status(201).json(medicao);
     
   } catch (e) {
     console.error(e);
     return res.status(500).json({ error: 'Erro ao registrar medição' });
-  }
-}
-
-// Validado (31/08/2025)
-export async function obterMedicoes(req, res) {
-  try {
-    //const {UsuarioID} = req.body;
-    const medicoes = await prisma.medicoes.findMany({
-      orderBy: { MedicaoData:'desc'}
-    });
-
-    if (!medicoes){
-      return res.status(404).json({ error: 'Nenhuma medição encontrada' });
-    }
-
-    return res.status(200).json(medicoes);
-  } catch (e) {
-    console.error(e);
-    return res.status(500).json({ error: 'Erro ao bucar medições' });
   }
 }
 

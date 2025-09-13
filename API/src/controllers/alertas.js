@@ -3,8 +3,25 @@ import { validarSessao } from '../utils.js';
 
 const prisma = new PrismaClient();
 
+// Listar todos os alertas (teste, desativar depois)
+/*
+export async function listarAlertas(req, res) {
+  try {
+    const alertas = await prisma.alertas.findMany({
+      orderBy: { AlertaData: "desc" }
+    });
+
+    return res.json(alertas);
+  } catch (error) {
+    console.error("Erro ao listar alertas:", error);
+    return res.status(500).json({ error: "Erro ao listar alertas" });
+  }
+}
+*/
+
 // Validado (31/08/2025)
-// Criar alerta
+// Criar alerta (desativado, será criado automáticamente de acordo com o exesso registrado na medição)
+/*
 export async function criarAlerta(req, res) {
   try {
     const { MedicaoId, AlertaTitulo, AlertaDescricao, AlertaNivel, AlertaStatus } = req.body;
@@ -47,20 +64,7 @@ export async function criarAlerta(req, res) {
     return res.status(500).json({ error: "Erro ao criar alerta" });
   }
 }
-
-// Listar todos os alertas (teste, desativar depois)
-export async function listarAlertas(req, res) {
-  try {
-    const alertas = await prisma.alertas.findMany({
-      orderBy: { AlertaData: "desc" }
-    });
-
-    return res.json(alertas);
-  } catch (error) {
-    console.error("Erro ao listar alertas:", error);
-    return res.status(500).json({ error: "Erro ao listar alertas" });
-  }
-}
+*/
 
 // Validado (31/08/2025)
 // Listar todos os alertas por medição
@@ -182,18 +186,24 @@ export async function listarAlertasUsuario(req, res) {
   }
 }
 
-/*
 // Deletar alerta
 export async function deletarAlerta(req, res) {
   try {
-    const { id } = req.params;
 
-    if (!id || isNaN(Number(id))) {
+    if (!validarSessao(req)){
+      return res.status(401).json({ error: "Sessão inválida" });
+    }
+
+    const { AlertaId } = req.params;
+
+    const UsuarioId = req.session.usuario.id;
+
+    if (!AlertaId || isNaN(Number(AlertaId))) {
       return res.status(400).json({ error: "ID do alerta inválido" });
     }
 
     const alerta = await prisma.alertas.findUnique({
-      where: { AlertaId: Number(id) }
+      where: { AlertaId: Number(AlertaId), UsuarioId: Number(UsuarioId) }
     });
 
     if (!alerta) {
@@ -201,15 +211,15 @@ export async function deletarAlerta(req, res) {
     }
 
     await prisma.alertas.delete({
-      where: { AlertaId: Number(id) }
+      where: { AlertaId: Number(AlertaId) }
     });
 
-    return res.json({ message: "Alerta deletado com sucesso" });
+    return res.json({ ok: true, message: "Alerta deletado com sucesso" });
 
   } catch (error) {
     console.error("Erro ao deletar alerta:", error);
     return res.status(500).json({ error: "Erro ao deletar alerta" });
   }
 }
-*/
+
 

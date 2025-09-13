@@ -1,10 +1,10 @@
 import { Router } from 'express';
-import { criarUsuario, obterUsuarioEmail, obterUsuarioId, alterarUsuario, login, logout, excluirUsuario, obterUsuarios, criptografarSenha } from '../controllers/usuarios.js';
+import { criarUsuario, obterUsuarioEmail, obterUsuarioId, alterarUsuario, login, logout, excluirUsuario } from '../controllers/usuarios.js';
 
 const r = Router();
 
 // Para testes
-r.get('/criptografarSenha/:senha', criptografarSenha);
+//r.get('/criptografarSenha/:senha', criptografarSenha);
 
 r.post('/', criarUsuario);
 /* 
@@ -38,7 +38,7 @@ JSON Example
 }
 */
 
-r.get('/', obterUsuarios)
+//r.get('/', obterUsuarios)
 
 r.get('/id/:id', obterUsuarioId);
 // id na URL, exemplo: /id/1

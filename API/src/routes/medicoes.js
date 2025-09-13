@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { criarMedicao, obterMedicoes, obterRelatorioSemanal, obterRelatorioMensal, obterRelatorioAnual, obterRelatorioDia,obterDiaMaisMenosPeso, obterMedicoesPorPeriodo } from '../controllers/medicoes.js';
+import { criarMedicao, obterRelatorioSemanal, obterRelatorioMensal, obterRelatorioAnual, obterRelatorioDia,obterDiaMaisMenosPeso, obterMedicoesPorPeriodo } from '../controllers/medicoes.js';
 
 const r = Router();
 
@@ -11,7 +11,7 @@ r.post('/', criarMedicao);
     "MedicaoLocal": "esquerda"
 */
 
-r.get('/', obterMedicoes);
+//r.get('/', obterMedicoes);
 
 r.get('/semanal/:mochila', obterRelatorioSemanal);
 r.get('/mensal/:ano/:mes/:mochila', obterRelatorioMensal);

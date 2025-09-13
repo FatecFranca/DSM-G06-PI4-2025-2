@@ -5,6 +5,7 @@ import { tr } from 'zod/locales';
 
 // Para testes, desativar depois
 // Validado (31/08/2025)
+/*
 export async function listarUsuariosMochilas(req, res){
   try {
     const usuariosMochilas = await prisma.usuarios_Mochilas.findMany({
@@ -17,6 +18,7 @@ export async function listarUsuariosMochilas(req, res){
     return res.status(500).json({ error: 'Erro ao listar usuários e suas mochilas' })
   }
 }
+*/
 
 // Validado (31/08/2025)
 export async function obterMochilaUsuario(req, res) {

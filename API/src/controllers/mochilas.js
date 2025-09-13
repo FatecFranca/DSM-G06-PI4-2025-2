@@ -3,6 +3,51 @@ import { prisma } from "../prisma.js";
 import { hashSenha, roundTo2, verificarSenha } from "../utils.js";
 import { customAlphabet } from 'nanoid';
 
+// Validado (28/08), desativar depois, somente para testes
+/*
+export async function obterMochilas(req, res) {
+    try {
+        const mochilas = await prisma.mochilas.findMany(
+            {
+                orderBy: { MochilaDtCadastro: 'desc' }
+            }
+        );
+        return res.json(mochilas);
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ error: "Erro ao obter mochilas" });
+    }
+}
+*/
+
+// Validado (28/08) - Desativado (Obter somente por código)
+/*
+export async function obterMochilaId(req, res) {
+    try {
+        const MochilaId = parseInt(req.params.id);
+
+        if (!MochilaId || isNaN(MochilaId)) {
+            return res.status(400).json({ error: "ID da mochila inválido" });
+        }
+
+        const mochila = await prisma.mochilas.findFirst({ where: { MochilaCodigo: MochilaCodigo.trim(), MochilaStatus: "Ativo" },
+        select: { MochilaId: true, MochilaPesoMax: true, MochilaDtCadastro: true, MochilaStatus: true, MochilaDescricao: true
+        } 
+        });
+
+        if (!mochila) {
+            return res.status(404).json({ error: "Mochila não encontrada" });
+        }
+
+        return res.json(mochila);
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ error: "Erro ao obter mochilas" });
+    }
+}
+*/
+
+
 // Validado (28/08)
 export async function criarMochila(req, res) {
     try{
@@ -86,21 +131,6 @@ export async function criarMochila(req, res) {
     }
 }
 
-// Validado (28/08), desativar depois, somente para testes
-export async function obterMochilas(req, res) {
-    try {
-        const mochilas = await prisma.mochilas.findMany(
-            {
-                orderBy: { MochilaDtCadastro: 'desc' }
-            }
-        );
-        return res.json(mochilas);
-    } catch (error) {
-        console.error(error);
-        return res.status(500).json({ error: "Erro ao obter mochilas" });
-    }
-}
-
 // Validado (28/08)
 export async function obterMochilaCodigo(req, res) {
     try {
@@ -126,30 +156,6 @@ export async function obterMochilaCodigo(req, res) {
     }
 }
 
-// Validado (28/08)
-export async function obterMochilaId(req, res) {
-    try {
-        const MochilaId = parseInt(req.params.id);
-
-        if (!MochilaId || isNaN(MochilaId)) {
-            return res.status(400).json({ error: "ID da mochila inválido" });
-        }
-
-        const mochila = await prisma.mochilas.findFirst({ where: { MochilaCodigo: MochilaCodigo.trim(), MochilaStatus: "Ativo" },
-        select: { MochilaId: true, MochilaPesoMax: true, MochilaDtCadastro: true, MochilaStatus: true, MochilaDescricao: true
-        } 
-        });
-
-        if (!mochila) {
-            return res.status(404).json({ error: "Mochila não encontrada" });
-        }
-
-        return res.json(mochila);
-    } catch (error) {
-        console.error(error);
-        return res.status(500).json({ error: "Erro ao obter mochilas" });
-    }
-}
 
 // Validado (30/08)
 export async function alterarMochila(req, res) {

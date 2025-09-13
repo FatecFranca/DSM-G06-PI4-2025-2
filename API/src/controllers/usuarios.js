@@ -2,6 +2,7 @@ import { prisma } from "../prisma.js";
 import { validarEmail, validarSenha, hashSenha, roundTo2, validarSessao, criaSessao, destruirSessao, verificarSenha, diferencaEntreDatas } from "../utils.js";
 
 // Para testes
+/*
 export async function criptografarSenha(req, res) {
     try {
         const senha = req.params.senha;
@@ -12,6 +13,20 @@ export async function criptografarSenha(req, res) {
         return res.status(500).json({ error: 'Erro ao criptografar senha' });
     }
 }
+*/
+
+// Validado (26/08) - Desativar (Apenas para testes)
+/*
+export async function obterUsuarios(req, res) {
+    try {
+        const usuarios = await prisma.usuarios.findMany();
+        return res.json(usuarios);
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ error: "Erro ao obter usuários" });
+    }
+}
+*/
 
 // Validado (26/08)
 export async function criarUsuario(req, res) {
@@ -118,8 +133,8 @@ export async function criarUsuario(req, res) {
             }
         });
 
-        return res.status(201).json(usuario);
-        //return res.status(201).json({ ok: true, message: 'Usuário criado com sucesso'});
+        //return res.status(201).json(usuario);
+        return res.status(201).json({ ok: true, message: 'Usuário criado com sucesso'});
     }catch(e){
         console.error(e);
         return res.status(500).json({ error: 'Erro ao cadastrar usuário' });
@@ -144,6 +159,16 @@ export async function obterUsuarioEmail(req, res) {
             where: { 
                 UsuarioEmail: UsuarioEmail,
                 UsuarioId: Number(req.session.usuario.id)
+            },
+            select: {
+                UsuarioNome: true,
+                UsuarioEmail: true,
+                UsuarioDtNascimento: true,
+                UsuarioPeso: true,
+                UsuarioAltura: true,
+                UsuarioSexo: true,
+                UsuarioFoto: true,
+                UsuarioPesoMaximoPorcentagem: true
             }
         });
 
@@ -193,18 +218,7 @@ export async function obterUsuarioId(req, res) {
     }
 }
 
-// Apenas para testes (deve ser removido ou protegido em produção) - Validado (26/08)
-export async function obterUsuarios(req, res) {
-    try {
-        const usuarios = await prisma.usuarios.findMany();
-        return res.json(usuarios);
-    } catch (error) {
-        console.error(error);
-        return res.status(500).json({ error: "Erro ao obter usuários" });
-    }
-}
-
-// Implementar depois armazenagem da foto - Validado (26/08)
+// Validado (26/08)
 export async function alterarUsuario(req, res) {
     try{
 
@@ -336,8 +350,8 @@ export async function alterarUsuario(req, res) {
             }
         });
 
-        //return res.status(200).json({ ok: true, message: 'Usuário atualizado com sucesso' });
-        return res.status(200).json(usuario);
+        return res.status(200).json({ ok: true, message: 'Usuário atualizado com sucesso' });
+        //return res.status(200).json(usuario);
 
     }catch(e){
         console.error(e);
@@ -387,7 +401,7 @@ export async function login(req, res) {
         // Cria a sessão do usuário
         await criaSessao(req, usuario.UsuarioId, usuario.UsuarioEmail);
         
-        return res.status(200).json({ ok: true, message: 'Login realizado com sucesso', usuarioId: usuario.UsuarioId });
+        return res.status(200).json({ ok: true, message: 'Login realizado com sucesso' });
 
     } catch (e) {
         console.error(e);

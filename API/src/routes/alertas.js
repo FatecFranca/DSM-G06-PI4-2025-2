@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { criarAlerta, listarAlertas, listarAlertasMedicao , obterAlerta, atualizarAlerta, listarAlertasUsuario } from '../controllers/alertas.js';
+import { criarAlerta, listarAlertasMedicao , obterAlerta, atualizarAlerta, listarAlertasUsuario, deletarAlerta } from '../controllers/alertas.js';
 
 const r = Router();
 r.post('/', criarAlerta);
@@ -13,7 +13,7 @@ r.post('/', criarAlerta);
 }
 */
 
-r.get('/', listarAlertas);
+//r.get('/', listarAlertas);
 
 r.get('/medicao/:id', listarAlertasMedicao);
 
@@ -28,6 +28,6 @@ r.put('/:id', atualizarAlerta);
 }
 */
 
-//r.delete('/:id', deletarAlerta);
+r.delete('/:id', deletarAlerta);
 
 export default r;
