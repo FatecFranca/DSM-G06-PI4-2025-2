@@ -1,8 +1,8 @@
 import { Router } from 'express';
-import { criarAlerta, listarAlertasMedicao , obterAlerta, atualizarAlerta, listarAlertasUsuario, deletarAlerta } from '../controllers/alertas.js';
+import { listarAlertasMedicao , obterAlerta, atualizarAlerta, listarAlertasUsuario, deletarAlerta } from '../controllers/alertas.js';
 
 const r = Router();
-r.post('/', criarAlerta);
+//r.post('/', criarAlerta);
 /*
 {
   "MedicaoId": 1,

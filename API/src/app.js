@@ -9,9 +9,6 @@ import mochilasRoutes from './routes/mochilas.js';
 import alertasRoutes from './routes/alertas.js';
 import usuariosMochilasRoutes from './routes/usuariosMochilas.js';
 
-import swaggerUi from "swagger-ui-express";
-import YAML from "yamljs";
-
 dotenv.config();
 const app = express();
 app.use(cors());
@@ -24,11 +21,6 @@ app.use(session({
   saveUninitialized: false,
   cookie: { maxAge: 1000 * 60 * 120 } // sessão expira em 2 hrs
 }));
-
-// Carregar o arquivo principal OpenAPI (que referencia os paths e schemas)
-const swaggerDocument = YAML.load("./project-teste/openapi.yaml");
-
-app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 // Rotas
 app.use('/usuarios', usuariosRotas);

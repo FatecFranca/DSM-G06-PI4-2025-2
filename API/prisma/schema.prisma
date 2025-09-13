@@ -21,10 +21,10 @@ model Usuarios {
   UsuarioSenha                  String     
   UsuarioDtCadastro             DateTime   @default(now())
   UsuarioDtNascimento           DateTime
-  UsuarioPeso                   Decimal?   @db.Decimal(5,2)
-  UsuarioAltura                 Decimal?   @db.Decimal(4,2)
-  UsuarioSexo                   String?    @db.VarChar(20) // "Masculino', "Feminino", "Outro" ou "Prefiro não dizer"
-  UsuarioStatus                 String?    @db.VarChar(20) // Ativo (está em uso com frequência), Inativo (já  faz algum tempo que não é acessado), Suspenso (banido pelo sistema/administradores), Excluido (usuário deletou a conta).
+  UsuarioPeso                   Decimal   @db.Decimal(5,2)
+  UsuarioAltura                 Decimal   @db.Decimal(4,2)
+  UsuarioSexo                   String    @db.VarChar(20) // "Masculino', "Feminino", "Outro" ou "Prefiro não dizer"
+  UsuarioStatus                 String    @db.VarChar(20) // Ativo (está em uso com frequência), Inativo (já  faz algum tempo que não é acessado), Suspenso (banido pelo sistema/administradores), Excluido (usuário deletou a conta).
   UsuarioFoto                   String?    // URL da foto do usuário
   UsuarioUltimoAcesso           DateTime?  // Data do último acesso
   UsuarioPesoMaximoPorcentagem  Decimal?   @db.Decimal(5,2) // Porcentagem do peso máximo permitido
@@ -36,12 +36,12 @@ model Mochilas {
   MochilaId          Int        @id @default(autoincrement())
   MochilaCodigo      String     @unique // identificação física/lógica
   MochilaSenha       String     @unique // Senha para encerrar ou iniciar o uso da mochila (será apresentado no código fonte do IOT)
-  MochilaPesoMax     Decimal?   @db.Decimal(6,2)
+  MochilaPesoMax     Decimal   @db.Decimal(6,2)
   MochilaDtCadastro  DateTime   
   MochilaDtAlteracao DateTime?   
-  MochilaStatus      String?    @db.VarChar(20) // Ativo (está  disponivel para uso), Excluido (foi excluida / não é mais possível usa-la).
-  MochilaDescricao   String?
-  AdminId            Int?
+  MochilaStatus      String    @db.VarChar(20) // Ativo (está  disponivel para uso), Excluido (foi excluida / não é mais possível usa-la).
+  MochilaDescricao   String
+  AdminId            Int
   medicoes           Medicoes[]
   vinculos           Usuarios_Mochilas[]
 }
@@ -49,8 +49,8 @@ model Mochilas {
 model Usuarios_Mochilas {
   UsuarioId     Int
   MochilaId     Int
-  MochilaNome   String?    @db.VarChar(100) // Apelido que o usuário deu para mochila, ao vincula-la com o seu usuário
-  UsoStatus     String?    @db.VarChar(20)  // Usando, Não Usando, Último a Usar
+  MochilaNome   String    @db.VarChar(100) // Apelido que o usuário deu para mochila, ao vincula-la com o seu usuário
+  UsoStatus     String    @db.VarChar(20)  // Usando, Não Usando, Último a Usar
   DataInicioUso DateTime?
   DataFimUso    DateTime?
 
@@ -65,11 +65,11 @@ model Medicoes {
   MedicaoId                     Int           @id @default(autoincrement())
   MochilaId                     Int
   UsuarioId                     Int
-  MedicaoLocal                  String?       @db.VarChar(20) // Local da medição (ex: "esquerda", "direita", "ambos", "centro")
+  MedicaoLocal                  String       @db.VarChar(20) // Local da medição (ex: "esquerda", "direita", "ambos", "centro")
   MedicaoPeso                   Decimal       @db.Decimal(6,2)
   MedicaoData                   DateTime      @default(now())
-  MedicaoStatus                 String?       @db.VarChar(50) // Dentro do limite, Acima do limite, Acima do limite da Mochila
-  MedicaoPesoMaximoPorcentagem  Decimal?      @db.Decimal(5,2) // Porcentagem do peso máximo permitido
+  MedicaoStatus                 String       @db.VarChar(50) // Dentro do limite, Acima do limite, Acima do limite da Mochila
+  MedicaoPesoMaximoPorcentagem  Decimal      @db.Decimal(5,2) // Porcentagem do peso máximo permitido
   MedicaoPesoMais               Decimal       @db.Decimal(6,2)
 
   mochila Mochilas @relation(fields: [MochilaId], references: [MochilaId], onDelete: Cascade)
@@ -82,10 +82,10 @@ model Alertas {
   MedicaoId       Int
   UsuarioId       Int
   AlertaTitulo    String   @db.VarChar(60)
-  AlertaDescricao String?
+  AlertaDescricao String
   AlertaNivel     String   @db.VarChar(20)
   AlertaData      DateTime @default(now())
-  AlertaStatus    String?  @db.VarChar(20) // Enviar (alerta não exibido), Enviado (alerta exibido), Lido (alerta lido pelo usuário)
+  AlertaStatus    String  @db.VarChar(20) // Enviar (alerta não exibido), Enviado (alerta exibido), Lido (alerta lido pelo usuário)
 
   medicao Medicoes @relation(fields: [MedicaoId], references: [MedicaoId], onDelete: Cascade)
 }
