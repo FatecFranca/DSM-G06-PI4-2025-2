@@ -18,8 +18,11 @@ A IOT foi desenvolvida...
 
 ## 📄 Descrição
 
+### Diagrama Entidade Relacionamento (DER):
+<img src="BD/DER.png">
+
 ### Fluxo da comunicação entre as partes da aplicação:
-<img src="/BD/DER.png">
+<img src="Fluxo-IOT-WEB-MOBILE-API-BD.png">
 
 <br>
 
