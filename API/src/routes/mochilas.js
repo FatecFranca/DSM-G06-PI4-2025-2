@@ -1,7 +1,13 @@
 import { Router } from 'express';
-import { criarMochila, obterMochilaCodigo, excluirMochila, alterarMochila } from '../controllers/mochilas.js';
+import { criarMochila, obterMochilaCodigo, excluirMochila, alterarMochila,  loginMochila } from '../controllers/mochilas.js';
 
 const r = Router();
+
+//r.get('/usuario', obterMochilasUsuario);
+
+//r.get('/', obterMochilas);
+
+//r.get('/id/:id', obterMochilaId);
 
 r.post('/', criarMochila);
 /*
@@ -15,11 +21,13 @@ JSON Example
 }
 */
 
-//r.get('/', obterMochilas);
+r.post('/loginMochila', loginMochila);
+/*
+    "MochilaCodigo": "Anunufnsw",
+    "MochilaSenha": "a"
+*/
 
 r.get('/codigo/:codigo', obterMochilaCodigo);
-
-//r.get('/id/:id', obterMochilaId);
 
 r.put('/', alterarMochila);
 /*

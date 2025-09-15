@@ -2,6 +2,7 @@ import { prisma } from "../prisma.js";
 //import bcrypt from "bcrypt";
 import { hashSenha, roundTo2, verificarSenha } from "../utils.js";
 import { customAlphabet } from 'nanoid';
+import jwt from 'jsonwebtoken';
 
 // Validado (28/08), desativar depois, somente para testes
 /*
@@ -47,8 +48,60 @@ export async function obterMochilaId(req, res) {
 }
 */
 
+// Validado (15/09) - Login Mochila (IoT)
+export async function loginMochila(req, res) {
+    try {
 
-// Validado (28/08)
+        const { MochilaCodigo, MochilaSenha } = req.body;
+
+        if (!MochilaCodigo) {
+            return res.status(400).json({ error: 'Código da mochila é obrigatório.' });
+        }
+
+        if (!MochilaSenha) {
+            return res.status(400).json({ error: 'Senha da mochila é obrigatória.' });
+        }
+
+        // 1. Busca a mochila no banco de dados usando o código.
+        const mochila = await prisma.mochilas.findUnique({
+            where: {
+                MochilaCodigo: MochilaCodigo,
+                MochilaStatus: 'Ativo'
+            },
+        });
+
+        if (!mochila || ! await verificarSenha(MochilaSenha, mochila.MochilaSenha)) {
+            return res.status(401).json({ ok: false, message: 'Mochila não encontrada ou senha inválida.' });
+        }
+
+        // 2. Prepara o payload (dados) para o token.
+        // O token irá conter o ID e o código da mochila para identificação futura.
+        const payload = {
+            MochilaId: mochila.MochilaId,
+            MochilaCodigo: mochila.MochilaCodigo,
+            tipo: 'iot', // Adiciona um tipo para diferenciar do token de usuário
+        };
+
+        // 3. Gera o token de acesso.
+        // O token para IoT pode ter uma validade um pouco maior, mas ainda deve ser limitado (e.g., 24h).
+        const token = jwt.sign(payload, process.env.SECRET_KEY, { expiresIn: '24h' });
+
+        // Retorna o token gerado com sucesso.
+        return res.status(200).json({
+            ok: true,
+            message: 'Autenticação da mochila realizada com sucesso.',
+            token: token
+        });
+
+    } catch (e) {
+        console.error("Erro ao gerar o token para a mochila:", e);
+        return res.status(500).json({ error: 'Erro interno do servidor.' });
+    } finally {
+        await prisma.$disconnect();
+    }
+}
+
+// Validado (28/08) - Criar Mochila
 export async function criarMochila(req, res) {
     try{
         const { MochilaPesoMax, password, passwordAdmin, AdminEmail, MochilaDescricao } = req.body;
@@ -128,10 +181,12 @@ export async function criarMochila(req, res) {
     } catch (error) {
         console.error(error);
         return res.status(500).json({ error: "Erro ao criar mochila" });
+    } finally {
+        await prisma.$disconnect();
     }
 }
 
-// Validado (28/08)
+// Validado (28/08) - Obter Mochila por código
 export async function obterMochilaCodigo(req, res) {
     try {
         const MochilaCodigo = req.params.codigo;
@@ -153,11 +208,68 @@ export async function obterMochilaCodigo(req, res) {
     } catch (error) {
         console.error(error);
         return res.status(500).json({ error: "Erro ao obter mochilas" });
+    } finally {
+        await prisma.$disconnect();
     }
 }
 
+// Validado (30/08) - Obter mochilas do usuário (ativas)
 
-// Validado (30/08)
+/*
+export async function obterMochilasUsuario(req, res) {
+    try {
+        let dadosUsuario = null;
+
+        if (!verificarToken(req)) {
+            return res.status(401).json({ error: 'Usuário não autenticado' });
+        }else{
+            dadosUsuario = await verificarToken(req);
+        }
+
+        const UsuarioId = Number(dadosUsuario.id);
+
+        if (!UsuarioId) {
+            return res.status(400).json({ error: 'ID do usuário não encontrado no token.' });
+        }
+
+        const vinculosMochilas = await prisma.usuarios_Mochilas.findMany({
+        where: {
+            UsuarioId: UsuarioId,
+        },
+        // Inclui os dados completos da mochila
+        include: {
+            mochila: {
+                select: {
+                    MochilaCodigo: true,
+                    MochilaPesoMax: true,
+                    MochilaDescricao: true,
+                    // O status da mochila também deve ser selecionado para o filtro
+                    MochilaStatus: true
+                },
+            },
+        },
+        orderBy: {
+            DataInicioUso: 'desc', // Ordena por data de uso mais recente
+        },
+    });
+
+    // Filtra as mochilas após a busca, mantendo apenas as ativas
+    const mochilasAtivas = vinculosMochilas.filter(vinculo => {
+        // Acessa o status da mochila e verifica se é "Ativo"
+        return vinculo.mochila && vinculo.mochila.MochilaStatus === 'Ativo';
+    });
+    return res.json(mochilasAtivas);
+
+    } catch (error) {
+        console.error("Erro ao obter mochilas do usuário:", error);
+        return res.status(500).json({ error: 'Erro ao obter mochilas do usuário.' });
+    } finally {
+        await prisma.$disconnect();
+    }
+}
+*/
+
+// Validado (30/08) - Alterar Dados ou Somente Senha
 export async function alterarMochila(req, res) {
     try {
 
@@ -331,10 +443,12 @@ export async function alterarMochila(req, res) {
     } catch (error) {
         console.error(error);
         return res.status(500).json({ error: "Erro ao alterar mochila" });
+    } finally {
+        await prisma.$disconnect();
     }
 }
 
-// Validado (28/08)
+// Validado (28/08) - Desativado (Exclusão lógica)
 export async function excluirMochila(req, res) {
     try {
 
@@ -405,5 +519,7 @@ export async function excluirMochila(req, res) {
     } catch (error) {
         console.error(error);
         return res.status(500).json({ error: "Erro ao excluir mochila" });
+    } finally {
+        await prisma.$disconnect();
     }
 }

@@ -3,6 +3,14 @@ import { criarMedicao, obterRelatorioSemanal, obterRelatorioMensal, obterRelator
 
 const r = Router();
 
+//r.post('/login/', loginMochila);
+/*
+    "MochilaCodigo": "Anunufnsw",
+    "MochilaSenha": "a"
+*/
+
+//r.get('/', obterMedicoes);
+
 r.post('/', criarMedicao);
 /*
     "MochilaCodigo": "Anunufnsw",
@@ -11,13 +19,16 @@ r.post('/', criarMedicao);
     "MedicaoLocal": "esquerda"
 */
 
-//r.get('/', obterMedicoes);
-
 r.get('/semanal/:mochila', obterRelatorioSemanal);
+
 r.get('/mensal/:ano/:mes/:mochila', obterRelatorioMensal);
+
 r.get('/anual/:ano/:mochila', obterRelatorioAnual);
+
 r.get('/dia/:data/:mochila', obterRelatorioDia);
+
 r.get('/diaMaisMenosPeso/:mochila', obterDiaMaisMenosPeso);
+
 r.get('/periodo/:inicio/:fim/:mochila', obterMedicoesPorPeriodo);
 
 export default r;

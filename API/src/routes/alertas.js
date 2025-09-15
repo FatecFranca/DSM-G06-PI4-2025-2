@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { listarAlertasMedicao , obterAlerta, atualizarAlerta, listarAlertasUsuario, deletarAlerta } from '../controllers/alertas.js';
+import { obterAlerta, atualizarAlerta, listarAlertasUsuario, deletarAlerta } from '../controllers/alertas.js';
 
 const r = Router();
 //r.post('/', criarAlerta);
@@ -15,7 +15,13 @@ const r = Router();
 
 //r.get('/', listarAlertas);
 
-r.get('/medicao/:id', listarAlertasMedicao);
+//r.get('/medicao/:id', listarAlertasMedicao);
+
+/*
+{
+  "AlertaStatus": "Enviar" ou "Enviado" ou "Lido"
+}
+*/
 
 r.get('/:id', obterAlerta);
 

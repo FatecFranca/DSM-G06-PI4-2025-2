@@ -1,5 +1,6 @@
 import { prisma } from "../prisma.js";
-import { validarEmail, validarSenha, hashSenha, roundTo2, validarSessao, criaSessao, destruirSessao, verificarSenha, diferencaEntreDatas } from "../utils.js";
+import { validarEmail, validarSenha, hashSenha, roundTo2, verificarSenha, diferencaEntreDatas, verificarToken } from "../utils.js";
+import jwt from 'jsonwebtoken';
 
 // Para testes
 /*
@@ -28,7 +29,7 @@ export async function obterUsuarios(req, res) {
 }
 */
 
-// Validado (26/08)
+// Validado (14/09/25) - Criar usuário
 export async function criarUsuario(req, res) {
     try{
         const { UsuarioNome, UsuarioEmail, UsuarioSenha, UsuarioDtNascimento,  UsuarioPeso, UsuarioAltura, UsuarioSexo, UsuarioFoto, UsuarioPesoMaximoPorcentagem } = req.body;
@@ -138,18 +139,24 @@ export async function criarUsuario(req, res) {
     }catch(e){
         console.error(e);
         return res.status(500).json({ error: 'Erro ao cadastrar usuário' });
+    } finally {
+        await prisma.$disconnect();
     }
 }
 
-// Validado (26/08)
+// Validado (14/09/25) - Obter usuário por e-mail
 export async function obterUsuarioEmail(req, res) {
     try{
 
-        if (!validarSessao(req)) {
+        let dadosUsuario = null;
+        if (! await verificarToken(req)) {
             return res.status(401).json({ error: 'Usuário não autenticado' });
+        }else{
+            dadosUsuario = await verificarToken(req);
         }
 
         const UsuarioEmail = req.params.email;
+        const UsuarioId = Number(dadosUsuario.id);
 
         if (!UsuarioEmail) {
             return res.status(400).json({ error: 'E-mail é obrigatório' });
@@ -158,7 +165,7 @@ export async function obterUsuarioEmail(req, res) {
         const usuario = await prisma.usuarios.findUnique({
             where: { 
                 UsuarioEmail: UsuarioEmail,
-                UsuarioId: Number(req.session.usuario.id)
+                UsuarioId: UsuarioId
             },
             select: {
                 UsuarioNome: true,
@@ -180,33 +187,42 @@ export async function obterUsuarioEmail(req, res) {
     }catch(e){
         console.error(e);
         return res.status(500).json({ error: 'Erro ao obter usuário por e-mail' });
+    } finally {
+        await prisma.$disconnect();
     }
 }
 
-// Validado (26/08)
-export async function obterUsuarioId(req, res) {
+// Validado (14/09/25) - Obter usuário logado
+export async function obterUsuarioLogado(req, res) {
     try{
 
-        if (!validarSessao(req)) {
+        let dadosUsuario = null;
+        if (! await verificarToken(req)) {
             return res.status(401).json({ error: 'Usuário não autenticado' });
+        }else{
+            dadosUsuario = await verificarToken(req);
         }
 
-        const UsuarioId = Number(req.params.id);
+        const UsuarioIdLogado = Number(dadosUsuario.id);
 
-        if (!UsuarioId) {
-            return res.status(400).json({ error: 'Id é obrigatório' });
-        }
-
-        const usuario = await prisma.usuarios.findFirst({
+        const usuario = await prisma.usuarios.findUnique({
             where: { 
-                AND: [
-                    { UsuarioId: UsuarioId },
-                    { UsuarioId: Number(req.session.usuario.id) } // Verifica se o usuário está autenticado
-                ]
+                UsuarioId: UsuarioIdLogado
+            },
+            select: {
+                UsuarioNome: true,
+                UsuarioEmail: true,
+                UsuarioDtNascimento: true,
+                UsuarioPeso: true,
+                UsuarioAltura: true,
+                UsuarioSexo: true,
+                UsuarioFoto: true,
+                UsuarioPesoMaximoPorcentagem: true
             }
         });
+        
         if (!usuario) {
-            return res.status(404).json({ error: 'Usuário não encontrado ou não autorizado a obter os seus dados' });
+            return res.status(404).json({ error: 'Usuário não encontrado' });
         }
 
         //return res.status(200).json({ ok: true, message: 'Usuário encontrado', usuario });
@@ -215,27 +231,32 @@ export async function obterUsuarioId(req, res) {
     }catch(e){
         console.error(e);
         return res.status(500).json({ error: 'Erro ao obter usuário por id' });
+    } finally {
+        await prisma.$disconnect();
     }
 }
 
-// Validado (26/08)
+// Validado (14/09/25) - Alterar usuário
 export async function alterarUsuario(req, res) {
     try{
 
-        if (!validarSessao(req)) {
+        let dadosUsuario = null;
+        if (! await verificarToken(req)) {
             return res.status(401).json({ error: 'Usuário não autenticado' });
+        }else{
+            dadosUsuario = await verificarToken(req);
         }
 
-        const { UsuarioNome, UsuarioEmail, UsuarioSenha, UsuarioDtNascimento,  UsuarioPeso, UsuarioAltura, UsuarioSexo, UsuarioFoto, UsuarioPesoMaximoPorcentagem } = req.body;
+        const { UsuarioNome, UsuarioEmail, UsuarioSenha, UsuarioDtNascimento, UsuarioPeso, UsuarioAltura, UsuarioSexo, UsuarioFoto, UsuarioPesoMaximoPorcentagem } = req.body;
 
-        const UsuarioId =  Number(req.session.usuario.id);
+        const UsuarioId =  Number(dadosUsuario.id);
 
         let usuarioExistente;
         if (!UsuarioId) {
             return res.status(400).json({ error: 'Usuário não autenticado' });
         }else{
             usuarioExistente = await prisma.usuarios.findUnique({
-                where: { UsuarioId: UsuarioId, UsuarioStatus: { not: 'Excluido', not: 'Suspenso'  } } // Verifica se o usuário está ativo
+                where: { UsuarioId: UsuarioId, UsuarioStatus: { not: 'Suspenso' } } // Verifica se o usuário está ativo
             });
 
             if (!usuarioExistente) {
@@ -356,20 +377,26 @@ export async function alterarUsuario(req, res) {
     }catch(e){
         console.error(e);
         return res.status(500).json({ error: 'Erro ao alterar usuário' });
+    } finally {
+        await prisma.$disconnect();
     }
 }
 
-// Validado (27/08)
+// Validado (14/09/25) - Login
 export async function login(req, res) {
     try {
-        const { UsuarioEmail, UsuarioSenha } = req.body;
-
+        const { UsuarioEmail, UsuarioSenha, TipoLogin } = req.body;
+    
         if (!UsuarioEmail) {
             return res.status(400).json({ error: 'E-mail é obrigatório' });
         }
 
         if (!UsuarioSenha) {
             return res.status(400).json({ error: 'Senha é obrigatória' });
+        }
+
+        if (!TipoLogin || (TipoLogin !== 'App' && TipoLogin !== 'Web')) {
+            return res.status(400).json({ error: 'Informe de onde vem a requisição (App ou Web)' });
         }
 
         const usuario = await prisma.usuarios.findUnique({
@@ -382,9 +409,7 @@ export async function login(req, res) {
             return res.status(404).json({ error: 'Usuário não encontrado' });
         }
 
-        if (usuario.UsuarioStatus === 'Excluido') {
-            return res.status(403).json({ error: 'Usuário não encontrado' });
-        }else if (usuario.UsuarioStatus === 'Suspenso') {
+        if (usuario.UsuarioStatus === 'Suspenso') {
             return res.status(403).json({ error: 'Usuário suspenso. Contate o suporte.' });
         }
 
@@ -399,47 +424,71 @@ export async function login(req, res) {
         });
 
         // Cria a sessão do usuário
-        await criaSessao(req, usuario.UsuarioId, usuario.UsuarioEmail);
+        //await criaSessao(req, usuario.UsuarioId, usuario.UsuarioEmail);
         
-        return res.status(200).json({ ok: true, message: 'Login realizado com sucesso' });
+        const payload = {
+            id: usuario.UsuarioId,
+            email: usuario.UsuarioEmail
+        };
+
+        // 1. Gerar o token de acesso (curta duração)
+        const accessToken = jwt.sign(payload, process.env.SECRET_KEY, { expiresIn: '15m' });
+
+        // 2. Gerar o token de refresh (longa duração)
+        let refreshToken;
+        if (TipoLogin === 'App') {
+            refreshToken = jwt.sign(payload, process.env.SECRET_KEY, { expiresIn: '60d' });
+        } else if (TipoLogin === 'Web') {
+            refreshToken = jwt.sign(payload, process.env.SECRET_KEY, { expiresIn: '1d' });
+        }
+
+        // 3. Retornar ambos os tokens para o cliente
+        return res.status(200).json({
+            ok: true,
+            message: 'Login realizado com sucesso.',
+            accessToken: accessToken,
+            refreshToken: refreshToken
+        });
 
     } catch (e) {
         console.error(e);
         return res.status(500).json({ error: 'Erro ao realizar login' });
+    } finally {
+        await prisma.$disconnect();
     }
 }
 
-// Validado (26/08)
+// Validar
+/*
 export async function logout(req, res) {
     try {
-        if (!validarSessao(req)) {
-            return res.status(401).json({ error: 'Usuário não autenticado' });
-        }
-        if (!destruirSessao(req)) {
-            return res.status(500).json({ error: 'Erro ao encerrar sessão (função)' });
-        }
-        return res.status(200).json({ ok: true, message: 'Sessão encerrada com sucesso' });
+        logout(); // Remove o token JWT do armazenamento do navegador
+        return res.status(200).json({ ok: true, message: 'Usuário deslogado com sucesso' });
     } catch (e) {
         console.error(e);
         return res.status(500).json({ error: 'Erro ao encerrar sessão' });
     }
 }
+s*/
 
-// Validado (27/08)
+// Validado (14/09/25) - Excluir usuário
 export async function excluirUsuario(req, res) {
     try {
 
-        if (!validarSessao(req)) {
+        let usuario = null;
+        if (! await verificarToken(req)) {
             return res.status(401).json({ error: 'Usuário não autenticado' });
+        }else{
+            usuario = await verificarToken(req);
         }
 
-        const UsuarioId = req.session.usuario.id;  
+        const UsuarioId = usuario.id;  
         if (!UsuarioId) {
             return res.status(400).json({ error: 'Usuário não autenticado' });
         }
 
         const usuarioExistente = await prisma.usuarios.findUnique({
-            where: { UsuarioId: UsuarioId, NOT: { UsuarioStatus: 'Excluido' } } // Verifica se o usuário não está excluído
+            where: { UsuarioId: UsuarioId } // Verifica se o usuário não está excluído
         });
 
         if (!usuarioExistente) {
@@ -456,19 +505,15 @@ export async function excluirUsuario(req, res) {
         }
 
         // Atualiza o status do usuário para "Excluido"
-        await prisma.usuarios.update({
-            where: { UsuarioId: UsuarioId },
-            data: { UsuarioStatus: "Excluido" }
+        await prisma.usuarios.delete({
+            where: { UsuarioId: UsuarioId }
         });
-
-        // Destrói a sessão do usuário
-        if (!destruirSessao(req)) {
-            return res.status(500).json({ error: 'Erro ao encerrar sessão (função)' });
-        }
 
         return res.status(200).json({ ok: true, message: 'Usuário excluído com sucesso'});
     } catch (e) {
         console.error(e);
         return res.status(500).json({ error: 'Erro ao excluir usuário' });
+    } finally {
+        await prisma.$disconnect();
     }
 }

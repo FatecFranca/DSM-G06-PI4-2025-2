@@ -8,6 +8,7 @@ import medicoesRoutes from './routes/medicoes.js';
 import mochilasRoutes from './routes/mochilas.js';
 import alertasRoutes from './routes/alertas.js';
 import usuariosMochilasRoutes from './routes/usuariosMochilas.js';
+import tokenRoutes from './routes/tokenJWT.js';
 
 dotenv.config();
 const app = express();
@@ -28,6 +29,7 @@ app.use('/medicoes', medicoesRoutes);
 app.use('/usuarios-mochilas', usuariosMochilasRoutes);
 app.use('/mochilas', mochilasRoutes);
 app.use('/alertas', alertasRoutes);
+app.use('/token', tokenRoutes);
 
 app.get('/health', (_req, res) => res.json({ ok: true }));
 

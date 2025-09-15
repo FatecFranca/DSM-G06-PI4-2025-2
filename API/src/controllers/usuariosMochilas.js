@@ -1,7 +1,6 @@
 import { prisma } from '../prisma.js';
 import { Prisma } from '@prisma/client';
-import { validarSessao, verificarSenha } from '../utils.js';
-import { tr } from 'zod/locales';
+import { verificarSenha, verificarToken } from '../utils.js';
 
 // Para testes, desativar depois
 // Validado (31/08/2025)
@@ -20,15 +19,18 @@ export async function listarUsuariosMochilas(req, res){
 }
 */
 
-// Validado (31/08/2025)
+// Valiodado (14/09/25) - Obter mochilas do usuário (ativas)
 export async function obterMochilaUsuario(req, res) {
     try {
 
-        if (!validarSessao(req)){
+        let usuario = null;
+        if (! await verificarToken(req)) {
             return res.status(401).json({ error: 'Usuário não autenticado' });
+        }else{
+            usuario = await verificarToken(req);
         }
     
-        const UsuarioId = req.session.usuario.id;
+        const UsuarioId = usuario.id;
 
         const mochilasUsuario = await prisma.usuarios_Mochilas.findMany({
             where: { 
@@ -75,19 +77,24 @@ export async function obterMochilaUsuario(req, res) {
 
     }catch(e){
         return res.status(500).json({ error: "Erro ao obter mochilas" });
+    } finally {
+        await prisma.$disconnect();
     }
 }
 
-// Validado (31/08/2025)
+// Validado (14/09/25) - Vincular mochila ao usuário
 export async function vincularMochila(req, res) {
   try {
     const { MochilaCodigo, MochilaNome } = req.body;
 
-    if (!validarSessao(req)){
-      return res.status(401).json({ error: 'Usuário não autenticado' });
+    let dadosUsuario = null;
+    if (! await verificarToken(req)) {
+        return res.status(401).json({ error: 'Usuário não autenticado' });
+    }else{
+        dadosUsuario = await verificarToken(req);
     }
 
-    const UsuarioId = req.session.usuario.id;
+    const UsuarioId = dadosUsuario.id;
 
     if (!MochilaCodigo || MochilaCodigo.trim() === '') {
       return res.status(400).json({ error: 'Código da mochila é obrigatório' });
@@ -129,19 +136,24 @@ export async function vincularMochila(req, res) {
   } catch (e) {
     console.error(e);
     return res.status(500).json({ error: 'Erro ao vincular mochila' });
+  } finally {
+      await prisma.$disconnect();
   }
 }
 
-// Validado (31/08/2025)
+// Validado (14/09/25) - Assumir Uso da Mochila
 export async function assumirUsoMochila(req, res) {
   try {
     const { MochilaCodigo } = req.body;
 
-    if (!validarSessao(req)){
-      return res.status(401).json({ error: 'Usuário não autenticado' });
+    let dadosUsuario = null;
+    if (! await verificarToken(req)) {
+        return res.status(401).json({ error: 'Usuário não autenticado' });
+    }else{
+        dadosUsuario = await verificarToken(req);
     }
 
-    const UsuarioId = req.session.usuario.id;
+    const UsuarioId = dadosUsuario.id;
 
     if (!MochilaCodigo || MochilaCodigo.trim() === '') {
       return res.status(400).json({ error: 'Código da mochila é obrigatório' });
@@ -251,19 +263,24 @@ export async function assumirUsoMochila(req, res) {
     }
     console.error(e);
     return res.status(500).json({ error: 'Erro ao assumir uso' });
+  } finally {
+      await prisma.$disconnect();
   }
 }
 
-// Validado (31/08/2025)
+// Validado (15/09/25) - Encerrar uso da mochila pelo usuário
 export async function encerrarUsoApp(req, res) {
   try {
     const { MochilaCodigo } = req.body;
     
-    if (!validarSessao(req)){
-      return res.status(401).json({ error: 'Usuário não autenticado' });
+    let dadosUsuario = null;
+    if (! await verificarToken(req)) {
+        return res.status(401).json({ error: 'Usuário não autenticado' });
+    }else{
+        dadosUsuario = await verificarToken(req);
     }
 
-    const UsuarioId = req.session.usuario.id;
+    const UsuarioId = dadosUsuario.id;
 
     if (!MochilaCodigo || MochilaCodigo.trim() === '') {
       return res.status(400).json({ error: 'Código da mochila é obrigatório' });
@@ -294,29 +311,34 @@ export async function encerrarUsoApp(req, res) {
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: 'Erro ao encerrar uso' });
+  } finally {
+      await prisma.$disconnect();
   }
 }
 
-// Validado (31/08/2025)
+// Validado (15/09/25) - Encerrar uso da mochila pela IoT
 export async function encerrarUsoIOT(req, res) {
   try {
-    const { MochilaCodigo, MochilaSenha } = req.body;
-
-    if (!MochilaCodigo || MochilaCodigo.trim() === '') {
-      return res.status(400).json({ error: 'Código da mochila é obrigatório' });
+    let dadosMochila = null;
+    if(! await verificarToken(req)){
+        return res.status(401).json({ error: 'Mochila não autenticada' });
+    }else{
+        dadosMochila = await verificarToken(req);
     }
 
-    if (!MochilaSenha || MochilaSenha.trim() === '') {
-      return res.status(400).json({ error: 'Senha da mochila é obrigatório' });
+    if (dadosMochila.tipo !== 'iot') {
+        return res.status(403).json({ error: 'Acesso negado. Token inválido para mochila.' + ' Tipo: ' + dadosMochila.tipo });
     }
 
-    const mochila = await prisma.mochilas.findUnique({ where: { MochilaCodigo: MochilaCodigo } });
+    let MochilaId =  Number(dadosMochila.MochilaId);
+
+    if (!MochilaId || isNaN(MochilaId) || MochilaId <= 0) {
+      return res.status(400).json({ error: 'ID da mochila inválido' });
+    }
+
+    const mochila = await prisma.mochilas.findUnique({ where: { MochilaId: MochilaId } });
     if (!mochila) {
       return res.status(404).json({ error: 'Mochila não encontrada' });
-    }
-
-    if (! await verificarSenha(MochilaSenha, mochila.MochilaSenha)){
-      return res.status(401).json({ error: 'Senha da mochila incorreta' });
     }
 
     const encerrado = await prisma.usuarios_Mochilas.updateMany({
@@ -333,5 +355,7 @@ export async function encerrarUsoIOT(req, res) {
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: 'Erro ao encerrar uso' });
+  } finally {
+      await prisma.$disconnect();
   }
 }

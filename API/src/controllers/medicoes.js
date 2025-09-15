@@ -1,6 +1,5 @@
-import { is } from 'zod/locales';
 import { prisma } from '../prisma.js';
-import { roundTo2, validarSessao, verificarSenha } from '../utils.js';
+import { roundTo2, verificarSenha, verificarToken } from '../utils.js';
 
 // Validado (31/08/2025) - Para testes (Desativar)
 /*
@@ -23,19 +22,68 @@ export async function obterMedicoes(req, res) {
 }
 */
 
-// Validado (31/08/2025)
+// Rota de login para o dispositivo Mochila (IoT)
+/*
+export async function loginMochila(req, res) {
+    try {
+        const { MochilaCodigo, MochilaSenha } = req.body;
+
+        // 1. Busca a mochila pelo seu código único
+        const mochila = await prisma.mochilas.findUnique({
+            where: { MochilaCodigo: MochilaCodigo }
+        });
+
+        if (!mochila) {
+            return res.status(404).json({ error: 'Mochila não encontrada.' });
+        }
+
+        // 2. Verifica a senha da mochila
+        if (!await verificarSenha(MochilaSenha, mochila.MochilaSenha)) {
+            return res.status(401).json({ error: 'Senha da mochila incorreta.' });
+        }
+
+        // Dados do payload para o JWT da mochila
+        const payload = {
+            MochilaId: mochila.MochilaId
+        };
+        
+        // 4. Cria o JWT com o payload e a chave secreta
+        // O tempo de expiração é importante para a segurança (15m)
+        const token = jwt.sign(payload, process.env.SECRET_KEY, { expiresIn: '15m' });
+
+        // 5. Retorna o token para o dispositivo IoT
+        return res.status(200).json({ ok: true, message: 'Autenticação da mochila bem-sucedida.', token: token });
+
+    } catch (e) {
+        console.error("Erro na autenticação da mochila:", e);
+        return res.status(500).json({ error: 'Erro ao autenticar a mochila.' });
+    } finally {
+        await prisma.$disconnect();
+    }
+}
+*/
+
+// Validado (15/09/2025) - Criar medição (IoT)
 export async function criarMedicao(req, res) {
   try {
-    const { MochilaCodigo, MochilaSenha, MedicaoPeso, MedicaoLocal } = req.body;
+    const { MedicaoPeso, MedicaoLocal } = req.body;
     let MedicaoStatus, MedicaoPesoMais;
 
-    if (!MochilaCodigo || MochilaCodigo.trim() === '') {
-      return res.status(400).json({ error: 'Codigo da mochila é obrigatório' });
+    let dadosMochila = null;
+    if(! await verificarToken(req)){
+        return res.status(401).json({ error: 'Mochila não autenticada' });
+    }else{
+        dadosMochila = await verificarToken(req);
     }
 
-    if (!MochilaSenha || MochilaSenha.trim() === '') {
-      return res.status(400).json({ error: 'Senha da mochila é obrigatório' });
+    let MochilaId =  Number(dadosMochila.MochilaId);
+
+    const mochila = await prisma.mochilas.findUnique({ where: { MochilaId: MochilaId } });
+    if (!mochila) {
+      return res.status(404).json({ error: 'Mochila não encontrada' });
     }
+
+    const mId = mochila.MochilaId;
 
     let pesoNormalizado;
     if (!MedicaoPeso || isNaN(MedicaoPeso)) {
@@ -52,17 +100,6 @@ export async function criarMedicao(req, res) {
       if (MedicaoLocal.trim() !== "esquerda" && MedicaoLocal.trim() !== "direita" && MedicaoLocal.trim() !== "ambos" && MedicaoLocal.trim() !== "centro") {
         return res.status(400).json({ error: 'Local deve ser "esquerda", "direita", "centro" ou "ambos"' });
       }
-    }
-
-    const mochila = await prisma.mochilas.findUnique({ where: { MochilaCodigo: MochilaCodigo } });
-    if (!mochila) {
-      return res.status(404).json({ error: 'Mochila não encontrada' });
-    }
-
-    const mId = mochila.MochilaId;
-
-    if (! await verificarSenha(MochilaSenha, mochila.MochilaSenha)){
-      return res.status(401).json({ error: 'Senha da mochila incorreta' });
     }
 
     const mPesoMaximo = mochila.MochilaPesoMax;
@@ -182,19 +219,38 @@ export async function criarMedicao(req, res) {
   } catch (e) {
     console.error(e);
     return res.status(500).json({ error: 'Erro ao registrar medição' });
+  } finally {
+      await prisma.$disconnect();
   }
 }
 
-// Validado (31/08/2025) / Validar corretamente com mais registros
-// Últimos 7 dias
+// Validado (15/09/2025) / Validar posteriormente com mais registros
+// Relatório do peso carregado com a mochila nos últimos 7 dias
 export async function obterRelatorioSemanal(req, res) {
   try {
 
-    if (!validarSessao(req)){
-      return res.status(401).json({ error: 'Sessão inválida' });
+    let usuario = null;
+    if (! await verificarToken(req)) {
+        return res.status(401).json({ error: 'Usuário não autenticado' });
+    }else{
+        usuario = await verificarToken(req);
     }
 
-    const UsuarioId = req.session.usuario.id;
+    const UsuarioId = usuario.id;
+
+    if (usuario.tipo === 'iot'){
+      return res.status(403).json({ error: 'Token inválido para usuário' });
+    }
+
+    if (!UsuarioId || isNaN(UsuarioId)){
+      return res.status(400).json({ error: "ID do usuário inválido" });
+    }
+
+    const dadosusuario = await prisma.usuarios.findUnique({ where: { UsuarioId: UsuarioId } });
+
+    if (!dadosusuario) {
+      return res.status(404).json({ error: 'Usuário não encontrado' });
+    }
 
     const MachilaCodigo = req.params.mochila;
 
@@ -206,6 +262,18 @@ export async function obterRelatorioSemanal(req, res) {
 
     if (!mochila) {
       return res.status(404).json({ error: 'Mochila não encontrada' });
+    }
+
+    // Verificar vinculo entre usuário e mochila
+    const usuarioMochila = await prisma.usuarios_Mochilas.findFirst({
+      where: { 
+        UsuarioId: UsuarioId, 
+        MochilaId: mochila.MochilaId
+      }
+    });
+
+    if (!usuarioMochila) {
+      return res.status(404).json({ error: 'Usuário não está vinculado a esta mochila' });
     }
 
     const seteDiasAtras = new Date();
@@ -238,19 +306,24 @@ export async function obterRelatorioSemanal(req, res) {
   } catch (e) {
     console.error(e);
     return res.status(500).json({ error: 'Erro ao buscar relatório semanal' });
+  } finally {
+      await prisma.$disconnect();
   }
 }
 
-// Validado (31/08/2025) / Validar corretamente com mais registros
+// Validar / Validar corretamente com mais registros
 // Relatório mensal (usuário escolhe mês e ano)
 export async function obterRelatorioMensal(req, res) {
   try {
 
-    if (!validarSessao(req)){
-      return res.status(401).json({ error: 'Sessão inválida' });
+    let usuario = null;
+    if (! await verificarToken(req)) {
+        return res.status(401).json({ error: 'Usuário não autenticado' });
+    }else{
+        usuario = await verificarToken(req);
     }
 
-    const UsuarioId = req.session.usuario.id;
+    const UsuarioId = usuario.id;
 
     const MachilaCodigo = req.params.mochila;
 
@@ -302,19 +375,24 @@ export async function obterRelatorioMensal(req, res) {
   } catch (e) {
     console.error(e);
     return res.status(500).json({ error: 'Erro ao buscar relatório mensal' });
+  } finally {
+      await prisma.$disconnect();
   }
 }
 
-// Validado (31/08/2025)
+// Validar
 // Relatório anual
 export async function obterRelatorioAnual(req, res) {
   try {
 
-    if (!validarSessao(req)){
-      return res.status(401).json({ error: 'Sessão inválida' });
+    let usuario = null;
+    if (! await verificarToken(req)) {
+        return res.status(401).json({ error: 'Usuário não autenticado' });
+    }else{
+        usuario = await verificarToken(req);
     }
 
-    const UsuarioId = req.session.usuario.id;
+    const UsuarioId = usuario.id;
 
     const MachilaCodigo = req.params.mochila;
 
@@ -366,19 +444,24 @@ export async function obterRelatorioAnual(req, res) {
   } catch (e) {
     console.error(e);
     return res.status(500).json({ error: 'Erro ao buscar relatório anual' });
+  } finally {
+      await prisma.$disconnect();
   }
 }
 
-// Validado (31/08/2025)
+// Validar
 // Relatório de um dia específico
 export async function obterRelatorioDia(req, res) {
   try {
 
-    if (!validarSessao(req)){
-      return res.status(401).json({ error: 'Sessão inválida' });
+    let usuario = null;
+    if (! await verificarToken(req)) {
+        return res.status(401).json({ error: 'Usuário não autenticado' });
+    }else{
+        usuario = await verificarToken(req);
     }
 
-    const UsuarioId = req.session.usuario.id;
+    const UsuarioId = usuario.id;
 
     const MachilaCodigo = req.params.mochila;
 
@@ -428,19 +511,24 @@ export async function obterRelatorioDia(req, res) {
   } catch (e) {
     console.error(e);
     return res.status(500).json({ error: 'Erro ao buscar relatório diário' });
+  } finally {
+      await prisma.$disconnect();
   }
 }
 
-// Validado (31/08/2025)
+// Validar
 // Dia com maior e menor peso registrado
 export async function obterDiaMaisMenosPeso(req, res) {
   try {
 
-    if (!validarSessao(req)){
-      return res.status(401).json({ error: 'Sessão inválida' });
+    let usuario = null;
+    if (! await verificarToken(req)) {
+        return res.status(401).json({ error: 'Usuário não autenticado' });
+    }else{
+        usuario = await verificarToken(req);
     }
 
-    const UsuarioId = req.session.usuario.id;
+    const UsuarioId = usuario.id;
 
     const MachilaCodigo = req.params.mochila;
 
@@ -499,19 +587,24 @@ export async function obterDiaMaisMenosPeso(req, res) {
   } catch (e) {
     console.error(e);
     return res.status(500).json({ error: 'Erro ao buscar dia mais/menos peso' });
+  } finally {
+      await prisma.$disconnect();
   }
 }
 
-// Validado (31/08/2025)
+// Validar
 // Buscar medições em um intervalo de datas informado pelo usuário
 export async function obterMedicoesPorPeriodo(req, res) {
   try {
 
-    if (!validarSessao(req)){
-      return res.status(401).json({ error: 'Sessão inválida' });
+    let usuario = null;
+    if (! await verificarToken(req)) {
+        return res.status(401).json({ error: 'Usuário não autenticado' });
+    }else{
+        usuario = await verificarToken(req);
     }
 
-    const UsuarioId = req.session.usuario.id;
+    const UsuarioId = usuario.id;
 
     const MachilaCodigo = req.params.mochila;
 
@@ -566,5 +659,7 @@ export async function obterMedicoesPorPeriodo(req, res) {
   } catch (e) {
     console.error(e);
     return res.status(500).json({ error: 'Erro ao buscar medições por período' });
+  } finally {
+      await prisma.$disconnect();
   }
 }
