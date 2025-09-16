@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import { verificarToken } from '../utils.js';
 
 const prisma = new PrismaClient();
 
@@ -99,7 +100,7 @@ export async function listarAlertasMedicao(req, res) {
 */
 
 // Validar
-// Obter alerta por ID
+//  Obter alerta por ID
 export async function obterAlerta(req, res) {
   try {
 
@@ -111,7 +112,22 @@ export async function obterAlerta(req, res) {
     }
 
     const { id } = req.params;
-    const UsuarioId = Number(usuario.id);
+
+    const UsuarioId = Number(usuario.UsuarioId);
+
+    if (usuario.tipo !== 'usuario'){
+      return res.status(403).json({ error: "Token iválido para usuário" });
+    }
+
+    if (!UsuarioId || isNaN(UsuarioId)){
+      return res.status(400).json({ error: "ID do usuário inválido" });
+    }
+
+    dadosUsuario = await prisma.usuarios.findUnique({ where: { UsuarioId: UsuarioId } });
+
+    if (!dadosUsuario) {
+      return res.status(404).json({ error: "Usuário não encontrado" });
+    }
 
     if (!id || isNaN(Number(id))) {
       return res.status(400).json({ error: "ID do alerta inválido" });
@@ -147,8 +163,25 @@ export async function atualizarAlerta(req, res) {
         usuario = await verificarToken(req);
     }
 
-    const UsuarioId = Number(usuario.id);
+    const UsuarioId = Number(usuario.UsuarioId);
 
+    if(!usuario.tipo){
+      return res.status(403).json({ error: "Token iválido para usuário" });
+    }
+
+    if (usuario.tipo !== 'usuario'){
+      return res.status(403).json({ error: "Token iválido para usuário" });
+    }
+
+    if (!UsuarioId || isNaN(UsuarioId)){
+      return res.status(400).json({ error: "ID do usuário inválido" });
+    }
+
+    dadosUsuario = await prisma.usuarios.findUnique({ where: { UsuarioId: UsuarioId } });
+
+    if (!dadosUsuario) {
+      return res.status(404).json({ error: "Usuário não encontrado" });
+    }
 
     const { id } = req.params;
 
@@ -195,10 +228,18 @@ export async function listarAlertasUsuario(req, res) {
         dadosUsuario = await verificarToken(req);
     }
 
-    const UsuarioId = dadosUsuario.id;
+    const UsuarioId = Number(dadosUsuario.UsuarioId);
+
+    if(!dadosUsuario.tipo){
+      return res.status(403).json({ error: "Token iválido para usuário" });
+    }
+
+    if (dadosUsuario.tipo !== 'usuario'){
+      return res.status(403).json({ error: "Token iválido para usuário" });
+    }
 
     const usuario = await prisma.usuarios.findUnique({
-      where: { UsuarioId: Number(UsuarioId) }
+      where: { UsuarioId: UsuarioId }
     });
 
     if (!usuario) {
@@ -234,7 +275,25 @@ export async function deletarAlerta(req, res) {
 
     const { AlertaId } = req.params;
 
-    const UsuarioId = usuario.id;
+    const UsuarioId = Number(usuario.UsuarioId);
+
+    if(!usuario.tipo){
+      return res.status(403).json({ error: "Token iválido para usuário" });
+    }
+
+    if (usuario.tipo !== 'usuario'){
+      return res.status(403).json({ error: "Token iválido para usuário" });
+    }
+
+    if (!UsuarioId || isNaN(UsuarioId)){
+      return res.status(400).json({ error: "ID do usuário inválido" });
+    }
+
+    dadosUsuario = await prisma.usuarios.findUnique({ where: { UsuarioId: UsuarioId } });
+
+    if (!dadosUsuario) {
+      return res.status(404).json({ error: "Usuário não encontrado" });
+    }
 
     if (!AlertaId || isNaN(Number(AlertaId))) {
       return res.status(400).json({ error: "ID do alerta inválido" });

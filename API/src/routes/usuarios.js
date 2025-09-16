@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { criarUsuario, obterUsuarioEmail, obterUsuarioLogado, alterarUsuario, login, excluirUsuario } from '../controllers/usuarios.js';
+import { criarUsuario, obterUsuarioLogado, alterarUsuario, login, excluirUsuario } from '../controllers/usuarios.js';
 
 const r = Router();
 
@@ -44,7 +44,7 @@ JSON Example
 
 r.get('/id/', obterUsuarioLogado);
 
-r.get('/email/:email', obterUsuarioEmail);
+//r.get('/email/:email', obterUsuarioEmail);
 
 r.post('/login', login);
 /*

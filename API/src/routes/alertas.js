@@ -25,7 +25,7 @@ const r = Router();
 
 r.get('/:id', obterAlerta);
 
-r.get('/usuario/:nada', listarAlertasUsuario)
+r.get('/usuario/user', listarAlertasUsuario)
 
 r.put('/:id', atualizarAlerta);
 /*

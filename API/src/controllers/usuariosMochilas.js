@@ -1,6 +1,6 @@
 import { prisma } from '../prisma.js';
 import { Prisma } from '@prisma/client';
-import { verificarSenha, verificarToken } from '../utils.js';
+import { verificarToken } from '../utils.js';
 
 // Para testes, desativar depois
 // Validado (31/08/2025)
@@ -21,65 +21,77 @@ export async function listarUsuariosMochilas(req, res){
 
 // Valiodado (14/09/25) - Obter mochilas do usuário (ativas)
 export async function obterMochilaUsuario(req, res) {
-    try {
+  try {
 
-        let usuario = null;
-        if (! await verificarToken(req)) {
-            return res.status(401).json({ error: 'Usuário não autenticado' });
-        }else{
-            usuario = await verificarToken(req);
-        }
-    
-        const UsuarioId = usuario.id;
-
-        const mochilasUsuario = await prisma.usuarios_Mochilas.findMany({
-            where: { 
-                UsuarioId: UsuarioId 
-            },
-            orderBy: {
-                DataFimUso: 'desc'
-            }
-        });
-
-        let mochilas = [];
-        for (let i = 0; i < mochilasUsuario.length; i++) {
-            const m = await prisma.mochilas.findFirst({ 
-                where: { 
-                    MochilaId: mochilasUsuario[i].MochilaId, 
-                    MochilaStatus: "Ativo" 
-                },
-                select: {
-                    MochilaCodigo: true,
-                    MochilaDescricao: true,
-                    MochilaPesoMax: true
-                }
-            });
-
-            if (m){
-              let mochila = {
-                  MochilaCodigo: m.MochilaCodigo,
-                  MochilaDescricao: m.MochilaDescricao,
-                  MochilaPesoMax: m.MochilaPesoMax,
-                  MochilaNome: mochilasUsuario[i].MochilaNome,
-                  UsoStatus: mochilasUsuario[i].UsoStatus,
-                  DataFimUso: mochilasUsuario[i].DataFimUso,
-                  DataInicioUso: mochilasUsuario[i].DataInicioUso
-              }
-
-              if (mochila) {
-                  mochilas.push(mochila);
-              }
-            }
-            
-        }
-
-        return res.status(200).json({ mochilas });
-
-    }catch(e){
-        return res.status(500).json({ error: "Erro ao obter mochilas" });
-    } finally {
-        await prisma.$disconnect();
+    let usuario = null;
+    if (! await verificarToken(req)) {
+      return res.status(401).json({ error: 'Usuário não autenticado' });
+    } else {
+      usuario = await verificarToken(req);
     }
+
+    const UsuarioId = Number(usuario.UsuarioId);
+
+    if (!usuario.tipo) {
+      return res.status(403).json({ error: "Token iválido para usuário" });
+    }
+
+    if (usuario.tipo !== 'usuario') {
+      return res.status(403).json({ error: "Token iválido para usuário" });
+    }
+
+    if (!UsuarioId || isNaN(UsuarioId)) {
+      return res.status(400).json({ error: "ID do usuário inválido" });
+    }
+
+    const mochilasUsuario = await prisma.usuarios_Mochilas.findMany({
+      where: {
+        UsuarioId: UsuarioId
+      },
+      orderBy: {
+        DataFimUso: 'desc'
+      }
+    });
+
+    let mochilas = [];
+    for (let i = 0; i < mochilasUsuario.length; i++) {
+      const m = await prisma.mochilas.findFirst({
+        where: {
+          MochilaId: mochilasUsuario[i].MochilaId,
+          MochilaStatus: "Ativo"
+        },
+        select: {
+          MochilaCodigo: true,
+          MochilaDescricao: true,
+          MochilaPesoMax: true
+        }
+      });
+
+      if (m) {
+        let mochila = {
+          MochilaCodigo: m.MochilaCodigo,
+          MochilaDescricao: m.MochilaDescricao,
+          MochilaPesoMax: m.MochilaPesoMax,
+          MochilaNome: mochilasUsuario[i].MochilaNome,
+          UsoStatus: mochilasUsuario[i].UsoStatus,
+          DataFimUso: mochilasUsuario[i].DataFimUso,
+          DataInicioUso: mochilasUsuario[i].DataInicioUso
+        }
+
+        if (mochila) {
+          mochilas.push(mochila);
+        }
+      }
+
+    }
+
+    return res.status(200).json({ mochilas });
+
+  } catch (e) {
+    return res.status(500).json({ error: "Erro ao obter mochilas" });
+  } finally {
+    await prisma.$disconnect();
+  }
 }
 
 // Validado (14/09/25) - Vincular mochila ao usuário
@@ -89,15 +101,27 @@ export async function vincularMochila(req, res) {
 
     let dadosUsuario = null;
     if (! await verificarToken(req)) {
-        return res.status(401).json({ error: 'Usuário não autenticado' });
-    }else{
-        dadosUsuario = await verificarToken(req);
+      return res.status(401).json({ error: 'Usuário não autenticado' });
+    } else {
+      dadosUsuario = await verificarToken(req);
     }
 
-    const UsuarioId = dadosUsuario.id;
+    const UsuarioId = Number(dadosUsuario.UsuarioId);
+
+    if (!dadosUsuario.tipo) {
+      return res.status(403).json({ error: "Token iválido para usuário" });
+    }
+
+    if (dadosUsuario.tipo !== 'usuario') {
+      return res.status(403).json({ error: "Token iválido para usuário" });
+    }
 
     if (!MochilaCodigo || MochilaCodigo.trim() === '') {
       return res.status(400).json({ error: 'Código da mochila é obrigatório' });
+    }
+
+    if (!UsuarioId || isNaN(UsuarioId)) {
+      return res.status(400).json({ error: "ID do usuário inválido" });
     }
 
     const mochila = await prisma.mochilas.findUnique({ where: { MochilaCodigo: MochilaCodigo } });
@@ -137,7 +161,7 @@ export async function vincularMochila(req, res) {
     console.error(e);
     return res.status(500).json({ error: 'Erro ao vincular mochila' });
   } finally {
-      await prisma.$disconnect();
+    await prisma.$disconnect();
   }
 }
 
@@ -148,12 +172,24 @@ export async function assumirUsoMochila(req, res) {
 
     let dadosUsuario = null;
     if (! await verificarToken(req)) {
-        return res.status(401).json({ error: 'Usuário não autenticado' });
-    }else{
-        dadosUsuario = await verificarToken(req);
+      return res.status(401).json({ error: 'Usuário não autenticado' });
+    } else {
+      dadosUsuario = await verificarToken(req);
     }
 
-    const UsuarioId = dadosUsuario.id;
+    const UsuarioId = Number(dadosUsuario.UsuarioId);
+
+    if (!dadosUsuario.tipo) {
+      return res.status(403).json({ error: "Token iválido para usuário" });
+    }
+
+    if (dadosUsuario.tipo !== 'usuario') {
+      return res.status(403).json({ error: "Token iválido para usuário" });
+    }
+
+    if (!UsuarioId || isNaN(UsuarioId)) {
+      return res.status(400).json({ error: "ID do usuário inválido" });
+    }
 
     if (!MochilaCodigo || MochilaCodigo.trim() === '') {
       return res.status(400).json({ error: 'Código da mochila é obrigatório' });
@@ -180,34 +216,34 @@ export async function assumirUsoMochila(req, res) {
     }
 
     let usuarioMochilaUsando = await prisma.usuarios_Mochilas.findFirst({
-      where: { 
-        MochilaId: mochila.MochilaId, 
-        UsoStatus: 'Usando' 
+      where: {
+        MochilaId: mochila.MochilaId,
+        UsoStatus: 'Usando'
       }
     });
 
     if (usuarioMochilaUsando) {
       if (usuarioMochilaUsando.UsuarioId === UsuarioId) {
-        return res.json({ ok: true, message:'Mochila já esta assumida pelo usuário' });
-      }else{
+        return res.json({ ok: true, message: 'Mochila já esta assumida pelo usuário' });
+      } else {
         return res.status(409).json({ error: 'Já existe um usuário usando esta mochila' });
       }
     }
 
     usuarioMochilaUsando = await prisma.usuarios_Mochilas.findFirst({
-      where: { 
-        UsuarioId: UsuarioId, 
+      where: {
+        UsuarioId: UsuarioId,
         NOT: { MochilaId: mochila.MochilaId },
-        UsoStatus: 'Usando' 
+        UsoStatus: 'Usando'
       }
     });
 
-    if (!usuarioMochilaUsando){
+    if (!usuarioMochilaUsando) {
       usuarioMochilaUsando = await prisma.usuarios_Mochilas.findFirst({
-        where: { 
-          UsuarioId: UsuarioId, 
+        where: {
+          UsuarioId: UsuarioId,
           NOT: { MochilaId: mochila.MochilaId },
-          UsoStatus: 'Último a Usar' 
+          UsoStatus: 'Último a Usar'
         }
       });
     }
@@ -229,32 +265,32 @@ export async function assumirUsoMochila(req, res) {
 
     if (rows.length === 0) {
       return res.status(409).json({ error: 'Mochila já está em uso por outro usuário' });
-    }else{
+    } else {
       await prisma.usuarios_Mochilas.updateMany({
-        where: { 
-          MochilaId: mochila.MochilaId, 
-          UsoStatus: 'Último a Usar' 
+        where: {
+          MochilaId: mochila.MochilaId,
+          UsoStatus: 'Último a Usar'
         },
-        data: { 
-          UsoStatus: 'Não Usando' 
+        data: {
+          UsoStatus: 'Não Usando'
         }
       });
     }
 
-    if (usuarioMochilaUsando){
+    if (usuarioMochilaUsando) {
       await prisma.usuarios_Mochilas.update({
-        where: { 
-          UsuarioId_MochilaId: { 
-            UsuarioId: usuarioMochilaUsando.UsuarioId, 
-            MochilaId: usuarioMochilaUsando.MochilaId 
-          } 
+        where: {
+          UsuarioId_MochilaId: {
+            UsuarioId: usuarioMochilaUsando.UsuarioId,
+            MochilaId: usuarioMochilaUsando.MochilaId
+          }
         },
         data: { DataFimUso: hojeAgora, UsoStatus: 'Não Usando' }
       });
       return res.json(usuarioMochilaUsando);
     }
 
-    return res.json({ ok: true, message:'Mochila assumida com sucesso' });
+    return res.json({ ok: true, message: 'Mochila assumida com sucesso' });
 
   } catch (e) {
     // Se o índice único parcial acusar violação
@@ -264,7 +300,7 @@ export async function assumirUsoMochila(req, res) {
     console.error(e);
     return res.status(500).json({ error: 'Erro ao assumir uso' });
   } finally {
-      await prisma.$disconnect();
+    await prisma.$disconnect();
   }
 }
 
@@ -272,15 +308,27 @@ export async function assumirUsoMochila(req, res) {
 export async function encerrarUsoApp(req, res) {
   try {
     const { MochilaCodigo } = req.body;
-    
+
     let dadosUsuario = null;
     if (! await verificarToken(req)) {
-        return res.status(401).json({ error: 'Usuário não autenticado' });
-    }else{
-        dadosUsuario = await verificarToken(req);
+      return res.status(401).json({ error: 'Usuário não autenticado' });
+    } else {
+      dadosUsuario = await verificarToken(req);
     }
 
-    const UsuarioId = dadosUsuario.id;
+    const UsuarioId = Number(dadosUsuario.UsuarioId);
+
+    if (!dadosUsuario.tipo) {
+      return res.status(403).json({ error: "Token iválido para usuário" });
+    }
+
+    if (dadosUsuario.tipo !== 'usuario') {
+      return res.status(403).json({ error: "Token iválido para usuário" });
+    }
+
+    if (!UsuarioId || isNaN(UsuarioId)) {
+      return res.status(400).json({ error: "ID do usuário inválido" });
+    }
 
     if (!MochilaCodigo || MochilaCodigo.trim() === '') {
       return res.status(400).json({ error: 'Código da mochila é obrigatório' });
@@ -312,7 +360,7 @@ export async function encerrarUsoApp(req, res) {
     console.error(e);
     res.status(500).json({ error: 'Erro ao encerrar uso' });
   } finally {
-      await prisma.$disconnect();
+    await prisma.$disconnect();
   }
 }
 
@@ -320,17 +368,17 @@ export async function encerrarUsoApp(req, res) {
 export async function encerrarUsoIOT(req, res) {
   try {
     let dadosMochila = null;
-    if(! await verificarToken(req)){
-        return res.status(401).json({ error: 'Mochila não autenticada' });
-    }else{
-        dadosMochila = await verificarToken(req);
+    if (! await verificarToken(req)) {
+      return res.status(401).json({ error: 'Mochila não autenticada' });
+    } else {
+      dadosMochila = await verificarToken(req);
     }
 
     if (dadosMochila.tipo !== 'iot') {
-        return res.status(403).json({ error: 'Acesso negado. Token inválido para mochila.' + ' Tipo: ' + dadosMochila.tipo });
+      return res.status(403).json({ error: 'Acesso negado. Token inválido para mochila.' + ' Tipo: ' + dadosMochila.tipo });
     }
 
-    let MochilaId =  Number(dadosMochila.MochilaId);
+    let MochilaId = Number(dadosMochila.MochilaId);
 
     if (!MochilaId || isNaN(MochilaId) || MochilaId <= 0) {
       return res.status(400).json({ error: 'ID da mochila inválido' });
@@ -356,6 +404,6 @@ export async function encerrarUsoIOT(req, res) {
     console.error(e);
     res.status(500).json({ error: 'Erro ao encerrar uso' });
   } finally {
-      await prisma.$disconnect();
+    await prisma.$disconnect();
   }
 }

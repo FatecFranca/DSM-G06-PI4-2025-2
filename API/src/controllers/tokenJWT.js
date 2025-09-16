@@ -8,7 +8,7 @@ export async function validarToken(req, res) {
 
         if (! await verificarToken(req)) {
             return res.status(401).json({ error: 'Usuário não autenticado' });
-        }else{
+        } else {
             return res.status(200).json({ ok: true, message: 'Token válido. Usuário autenticado' });
         }
 
@@ -56,7 +56,7 @@ export async function logout(req, res) {
         if (e instanceof PrismaClientKnownRequestError && e.code === 'P2002') {
             return res.status(200).json({ ok: true, message: 'Sessão já estava encerrada.' });
         }
-        
+
         console.error("Erro ao revogar o token:", e);
         return res.status(500).json({ error: 'Erro interno do servidor.' });
 
@@ -74,7 +74,7 @@ export async function refresh(req, res) {
         const refreshToken = verificarTokenDoCorpo(req);
 
         if (!refreshToken) {
-            return res.status(400).json({ ok: false, message: 'Token de refresh não fornecido.' });
+            return res.status(400).json({ error: 'Token de refresh não fornecido.' });
         }
 
         // 1. Verifica se o token está na lista de revogados (blacklist)
@@ -83,16 +83,35 @@ export async function refresh(req, res) {
         });
 
         if (tokenRevogado) {
-            return res.status(401).json({ ok: false, message: 'Token de refresh revogado.' });
+            return res.status(401).json({ error: 'Token de refresh revogado.' });
         }
 
         // 2. Verifica se o token de refresh é válido e não está expirado.
-        const decoded = jwt.verify(refreshToken, process.env.SECRET_KEY);
+        const token = validarToken(refreshToken);
+        if (!token) {
+            return res.status(401).json({ error: 'Token de refresh inválido ou expirado.' });
+        }
 
-        // Se a verificação acima falhar, a execução é interrompida e o catch é ativado.
+        let payload = {};
+        if (token.UsuarioId && token.UsuarioEmail && token.tipo === 'usuario') {
+            payload = {
+                id: token.UsuarioId,
+                email: token.UsuarioEmail,
+                tipo: 'usuario', // Adiciona um tipo para diferenciar do token de IoT
+            };
+        }else if (token.MochilaCodigo && token.MochilaId && token.tipo === 'iot') {
+            payload = {
+                MochilaId: mochila.MochilaId,
+                MochilaCodigo: mochila.MochilaCodigo,
+                tipo: 'iot', // Adiciona um tipo para diferenciar do token de usuário
+            };
+        }else{
+            return res.status(401).json({ error: 'Token de refresh inválido.' });
+        }
+
 
         // 3. Se o token for válido e não estiver revogado, gera um novo Access Token
-        const newAccessToken = jwt.sign({ userId: decoded.userId }, process.env.SECRET_KEY, { expiresIn: '15m' });
+        const newAccessToken = jwt.sign(payload, process.env.SECRET_KEY, { expiresIn: '15m' });
 
         return res.status(200).json({
             ok: true,
@@ -103,12 +122,12 @@ export async function refresh(req, res) {
     } catch (e) {
         // Trata tokens inválidos (ex: assinatura inválida, expirado)
         if (e.name === 'TokenExpiredError') {
-            return res.status(401).json({ ok: false, message: 'Token de refresh expirado. Por favor, faça login novamente.' });
+            return res.status(401).json({ error: 'Token de refresh expirado. Por favor, faça login novamente.' });
         }
-        
+
         console.error("Erro ao renovar o token:", e);
-        return res.status(401).json({ ok: false, message: 'Token de refresh inválido.' });
-        
+        return res.status(401).json({ error: 'Token de refresh inválido.' });
+
     } finally {
         await prisma.$disconnect();
     }
