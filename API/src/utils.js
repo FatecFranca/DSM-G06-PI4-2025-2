@@ -1,5 +1,36 @@
 import bcrypt from "bcrypt";
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
+
+/**
+ * Verifica uma assinatura digital usando a chave pública.
+ * @param {string} assinatura A assinatura recebida do dispositivo.
+ * @param {object} dadosAssinados O objeto de dados que foi assinado.
+ * @param {string} chavePublica A chave pública do dispositivo, obtida do banco de dados.
+ * @returns {boolean} Retorna true se a assinatura for válida, false caso contrário.
+*/
+// ... (código da função loginMochila)
+
+export function verificarAssinatura(assinatura, dadosAssinados, chavePublica) {
+    try {
+        const assinaturaBuffer = Buffer.from(assinatura, 'base64');
+        
+        // Garante que a string para verificação é a mesma que foi assinada
+        const dadosParaVerificar = JSON.stringify(dadosAssinados, Object.keys(dadosAssinados).sort());
+        
+        // Usa RSA-SHA256, que padroniza o padding como PKCS1v15
+        const verifier = crypto.createVerify('RSA-SHA256');
+        
+        verifier.update(dadosParaVerificar);
+
+        // A verificação é simples e direta
+        return verifier.verify(chavePublica, assinaturaBuffer);
+
+    } catch (error) {
+        console.error('Erro ao verificar a assinatura:', error);
+        return false;
+    }
+}
 
 // Middleware para verificar o token JWT em rotas protegidas ---
 export async function verificarToken(req) {
@@ -29,6 +60,42 @@ export async function verificarToken(req) {
         return false;
     }
 }
+
+// Middleware para verificar o token JWT em rotas protegidas enviado via JSON ---
+export async function verificarTokenJson(authToken) {
+    try {
+        const token = authToken && authToken.split(' ')[1];
+
+        if (token == null) {
+            return false;
+        }
+
+        // Usa uma Promise para transformar a chamada de callback em async/await
+        const payload = await new Promise((resolve, reject) => {
+            jwt.verify(token, process.env.SECRET_KEY, (err, payload) => {
+                if (err) {
+                    reject(err);
+                } else {
+                    resolve(payload);
+                }
+            });
+        });
+
+        // Retorna o payload se a verificação for bem-sucedida
+        return payload;
+    } catch (e) {
+        // Retorna false se a verificação falhar (token inválido ou expirado)
+        return false;
+    }
+}
+
+export const verificarTokenDoCorpo = (req) => {
+    try {
+        return req.body.token;
+    } catch {
+        return null;
+    }
+};
 
 // Não utilizada, deve ser feito do lado do cliente
 /*

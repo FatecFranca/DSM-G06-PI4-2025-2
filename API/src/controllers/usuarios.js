@@ -1,5 +1,5 @@
 import { prisma } from "../prisma.js";
-import { validarEmail, validarSenha, hashSenha, roundTo2, verificarSenha, diferencaEntreDatas, verificarToken } from "../utils.js";
+import { validarEmail, validarSenha, hashSenha, roundTo2, verificarSenha, diferencaEntreDatas, verificarToken, verificarTokenDoCorpo } from "../utils.js";
 import jwt from 'jsonwebtoken';
 
 // Para testes
@@ -266,10 +266,6 @@ export async function alterarUsuario(req, res) {
             dadosUsuario = await verificarToken(req);
         }
 
-        const { UsuarioNome, UsuarioEmail, UsuarioSenha, UsuarioDtNascimento, UsuarioPeso, UsuarioAltura, UsuarioSexo, UsuarioFoto, UsuarioPesoMaximoPorcentagem } = req.body;
-
-        const UsuarioId = Number(dadosUsuario.UsuarioId);
-
         if(!dadosUsuario.tipo){
         return res.status(403).json({ error: "Token iválido para usuário" });
         }
@@ -277,6 +273,10 @@ export async function alterarUsuario(req, res) {
         if (dadosUsuario.tipo !== 'usuario'){
         return res.status(403).json({ error: "Token iválido para usuário" });
         }
+
+        const { UsuarioNome, UsuarioEmail, UsuarioSenha, UsuarioDtNascimento, UsuarioPeso, UsuarioAltura, UsuarioSexo, UsuarioFoto, UsuarioPesoMaximoPorcentagem } = req.body;
+
+        const UsuarioId = Number(dadosUsuario.UsuarioId);
 
         let usuarioExistente;
         if (!UsuarioId) {
@@ -422,8 +422,10 @@ export async function login(req, res) {
             return res.status(400).json({ error: 'Senha é obrigatória' });
         }
 
-        if (!TipoLogin || (TipoLogin !== 'App' && TipoLogin !== 'Web')) {
+        if (!TipoLogin) {
             return res.status(400).json({ error: 'Informe de onde vem a requisição (App ou Web)' });
+        }else if (TipoLogin !== 'App' && TipoLogin !== 'Web') {
+            return res.status(400).json({ error: 'Tipo de login inválido. Use "App" ou "Web"' });
         }
 
         const usuario = await prisma.usuarios.findUnique({
@@ -481,6 +483,43 @@ export async function login(req, res) {
     } catch (e) {
         console.error(e);
         return res.status(500).json({ error: 'Erro ao realizar login' });
+    } finally {
+        await prisma.$disconnect();
+    }
+}
+
+// Validado (20/09/25) - Logout
+// Esta rota recebe um Refresh Token e o adiciona à blacklist
+// para que ele não possa mais ser usado, mesmo que não tenha expirado.
+export async function logout(req, res) {
+    try {
+
+        const refreshToken = verificarTokenDoCorpo(req);
+
+        if (!refreshToken) {
+            return res.status(400).json({ error: 'Token de refresh não fornecido.' });
+        }
+
+        // Tenta adicionar o token à tabela de tokens revogados
+        await prisma.tokensRevogados.create({
+            data: {
+                token: refreshToken
+            }
+        });
+
+        // O token foi revogado com sucesso.
+        return res.status(200).json({ ok: true, message: 'Sessão encerrada com sucesso.' });
+
+    } catch (e) {
+        // Se o token já estiver na tabela, o Prisma lançará um erro de violação de chave primária.
+        // Neste caso, tratamos como sucesso, pois o token já estava revogado.
+        if (e instanceof PrismaClientKnownRequestError && e.code === 'P2002') {
+            return res.status(200).json({ ok: true, message: 'Sessão já estava encerrada.' });
+        }
+
+        console.error("Erro ao revogar o token:", e);
+        return res.status(500).json({ error: 'Erro interno do servidor.' });
+
     } finally {
         await prisma.$disconnect();
     }

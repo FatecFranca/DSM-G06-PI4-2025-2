@@ -99,8 +99,8 @@ export async function listarAlertasMedicao(req, res) {
 }
 */
 
-// Validar
-//  Obter alerta por ID
+// Validado (20/09/2025)
+// Obter alerta por ID
 export async function obterAlerta(req, res) {
   try {
 
@@ -123,7 +123,7 @@ export async function obterAlerta(req, res) {
       return res.status(400).json({ error: "ID do usuário inválido" });
     }
 
-    dadosUsuario = await prisma.usuarios.findUnique({ where: { UsuarioId: UsuarioId } });
+    const dadosUsuario = await prisma.usuarios.findUnique({ where: { UsuarioId: UsuarioId } });
 
     if (!dadosUsuario) {
       return res.status(404).json({ error: "Usuário não encontrado" });
@@ -177,7 +177,7 @@ export async function atualizarAlerta(req, res) {
       return res.status(400).json({ error: "ID do usuário inválido" });
     }
 
-    dadosUsuario = await prisma.usuarios.findUnique({ where: { UsuarioId: UsuarioId } });
+    const dadosUsuario = await prisma.usuarios.findUnique({ where: { UsuarioId: UsuarioId } });
 
     if (!dadosUsuario) {
       return res.status(404).json({ error: "Usuário não encontrado" });
@@ -217,7 +217,8 @@ export async function atualizarAlerta(req, res) {
   }
 }
 
-// Validar
+// Validado (20/09/2025)
+// Listar todos os alertas de um usuário pelo status informado
 export async function listarAlertasUsuario(req, res) {
   try {
     
@@ -246,8 +247,14 @@ export async function listarAlertasUsuario(req, res) {
       return res.status(404).json({ error: "Usuário não encontrado" });
     }
 
+    const { AlertaStatus } = req.body;
+
+    if (!AlertaStatus || !["Enviar", "Enviado", "Lido"].includes(AlertaStatus)) {
+      return res.status(400).json({ error: "Status de alerta inválido. Deve ser 'Enviar', 'Enviado' ou 'Lido'" });
+    }
+
     const alertas = await prisma.alertas.findMany({
-        where: { UsuarioId: Number(UsuarioId) },
+        where: { UsuarioId: Number(UsuarioId), AlertaStatus: AlertaStatus },
         orderBy: { AlertaData: 'asc' }
     });
 
@@ -261,7 +268,7 @@ export async function listarAlertasUsuario(req, res) {
   }
 }
 
-// Validar
+// Validado (20/09/2025)
 // Deletar alerta
 export async function deletarAlerta(req, res) {
   try {
@@ -273,7 +280,7 @@ export async function deletarAlerta(req, res) {
         usuario = await verificarToken(req);
     }
 
-    const { AlertaId } = req.params;
+    const AlertaId = Number(req.params.id);
 
     const UsuarioId = Number(usuario.UsuarioId);
 
@@ -289,7 +296,7 @@ export async function deletarAlerta(req, res) {
       return res.status(400).json({ error: "ID do usuário inválido" });
     }
 
-    dadosUsuario = await prisma.usuarios.findUnique({ where: { UsuarioId: UsuarioId } });
+    const dadosUsuario = await prisma.usuarios.findUnique({ where: { UsuarioId: UsuarioId } });
 
     if (!dadosUsuario) {
       return res.status(404).json({ error: "Usuário não encontrado" });

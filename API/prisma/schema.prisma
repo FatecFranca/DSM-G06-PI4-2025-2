@@ -29,24 +29,25 @@ model Usuarios {
   UsuarioUltimoAcesso          DateTime? // Data do último acesso
   UsuarioPesoMaximoPorcentagem Decimal?            @db.Decimal(5, 2) // Porcentagem do peso máximo permitido
   medicoes                     Medicoes[]
-  vinculos                     Usuarios_Mochilas[]
+  vinculos                     UsuariosMochilas[]
 }
 
 model Mochilas {
-  MochilaId          Int                 @id @default(autoincrement())
-  MochilaCodigo      String              @unique // identificação física/lógica
-  MochilaSenha       String              @unique // Senha para encerrar ou iniciar o uso da mochila (será apresentado no código fonte do IOT)
-  MochilaPesoMax     Decimal             @db.Decimal(6, 2)
-  MochilaDtCadastro  DateTime
-  MochilaDtAlteracao DateTime?
-  MochilaStatus      String              @db.VarChar(20) // Ativo (está  disponivel para uso), Excluido (foi excluida / não é mais possível usa-la).
-  MochilaDescricao   String
-  AdminId            Int
-  medicoes           Medicoes[]
-  vinculos           Usuarios_Mochilas[]
+  MochilaId           Int                 @id @default(autoincrement())
+  MochilaCodigo       String              @unique // identificação física/lógica
+  MochilaSenha        String              @unique // Senha para encerrar ou iniciar o uso da mochila (será apresentado no código fonte do IOT)
+  MochilaChavePublica String?             @unique // Chave pública para comunicação segura (será armaxenado no efuses do IOT)
+  MochilaPesoMax      Decimal             @db.Decimal(6, 2)
+  MochilaDtCadastro   DateTime
+  MochilaDtAlteracao  DateTime?
+  MochilaStatus       String              @db.VarChar(20) // Ativo (está  disponivel para uso), Excluido (foi excluida / não é mais possível usa-la).
+  MochilaDescricao    String
+  AdminId             Int
+  medicoes            Medicoes[]
+  vinculos            UsuariosMochilas[]
 }
 
-model Usuarios_Mochilas {
+model UsuariosMochilas {
   UsuarioId     Int
   MochilaId     Int
   MochilaNome   String    @db.VarChar(100) // Apelido que o usuário deu para mochila, ao vincula-la com o seu usuário

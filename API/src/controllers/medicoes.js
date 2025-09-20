@@ -105,7 +105,7 @@ export async function criarMedicao(req, res) {
     const mPesoMaximo = mochila.MochilaPesoMax;
 
     // Tenta achar usuário ativo na mochila
-    const usuarioMochila = await prisma.usuarios_Mochilas.findFirst({
+    const usuarioMochila = await prisma.usuariosMochilas.findFirst({
       where: { 
         MochilaId: mochila.MochilaId, 
         OR: [
@@ -207,7 +207,7 @@ export async function criarMedicao(req, res) {
     }
 
     if (usuarioMochila.UsoStatus === 'Último a Usar'){
-      await prisma.usuarios_Mochilas.update({
+      await prisma.usuariosMochilas.update({
         where: { UsuarioId_MochilaId: { UsuarioId: uId, MochilaId: mId } },
         data: { UsoStatus: 'Usando', DataInicioUso: new Date(), DataFimUso: null }
       });
@@ -269,7 +269,7 @@ export async function obterRelatorioSemanal(req, res) {
     }
 
     // Verificar vinculo entre usuário e mochila
-    const usuarioMochila = await prisma.usuarios_Mochilas.findFirst({
+    const usuarioMochila = await prisma.usuariosMochilas.findFirst({
       where: { 
         UsuarioId: UsuarioId, 
         MochilaId: mochila.MochilaId

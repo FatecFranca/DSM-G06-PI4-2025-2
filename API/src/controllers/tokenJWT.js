@@ -1,7 +1,8 @@
 import { prisma } from "../prisma.js";
 import jwt from "jsonwebtoken";
+import { verificarToken, verificarTokenJson, verificarTokenDoCorpo } from "../utils.js";
 
-// Validar
+// Validado (20/09/2025)
 // Verificar se token ainda está valido
 export async function validarToken(req, res) {
     try {
@@ -20,58 +21,13 @@ export async function validarToken(req, res) {
     }
 }
 
-const verificarTokenDoCorpo = (req) => {
-    try {
-        return req.body.token;
-    } catch {
-        return null;
-    }
-};
-
-// Validar
-// Esta rota recebe um Refresh Token e o adiciona à blacklist
-// para que ele não possa mais ser usado, mesmo que não tenha expirado.
-export async function logout(req, res) {
-    try {
-
-        const refreshToken = verificarTokenDoCorpo(req);
-
-        if (!refreshToken) {
-            return res.status(400).json({ ok: false, message: 'Token de refresh não fornecido.' });
-        }
-
-        // Tenta adicionar o token à tabela de tokens revogados
-        await prisma.tokensRevogados.create({
-            data: {
-                token: refreshToken
-            }
-        });
-
-        // O token foi revogado com sucesso.
-        return res.status(200).json({ ok: true, message: 'Sessão encerrada com sucesso.' });
-
-    } catch (e) {
-        // Se o token já estiver na tabela, o Prisma lançará um erro de violação de chave primária.
-        // Neste caso, tratamos como sucesso, pois o token já estava revogado.
-        if (e instanceof PrismaClientKnownRequestError && e.code === 'P2002') {
-            return res.status(200).json({ ok: true, message: 'Sessão já estava encerrada.' });
-        }
-
-        console.error("Erro ao revogar o token:", e);
-        return res.status(500).json({ error: 'Erro interno do servidor.' });
-
-    } finally {
-        await prisma.$disconnect();
-    }
-}
-
-//  Validar
+// Validado (20/09/2025)
 // Esta rota recebe um Refresh Token e, se ele for válido e não estiver revogado,
 // gera um novo Access Token para o cliente.
 export async function refresh(req, res) {
     try {
 
-        const refreshToken = verificarTokenDoCorpo(req);
+        const refreshToken = await verificarTokenDoCorpo(req);
 
         if (!refreshToken) {
             return res.status(400).json({ error: 'Token de refresh não fornecido.' });
@@ -87,7 +43,7 @@ export async function refresh(req, res) {
         }
 
         // 2. Verifica se o token de refresh é válido e não está expirado.
-        const token = validarToken(refreshToken);
+        const token = await verificarTokenJson(refreshToken);
         if (!token) {
             return res.status(401).json({ error: 'Token de refresh inválido ou expirado.' });
         }
@@ -95,18 +51,18 @@ export async function refresh(req, res) {
         let payload = {};
         if (token.UsuarioId && token.UsuarioEmail && token.tipo === 'usuario') {
             payload = {
-                id: token.UsuarioId,
-                email: token.UsuarioEmail,
+                UsuarioId: token.UsuarioId,
+                UsuarioEmail: token.UsuarioEmail,
                 tipo: 'usuario', // Adiciona um tipo para diferenciar do token de IoT
             };
         }else if (token.MochilaCodigo && token.MochilaId && token.tipo === 'iot') {
             payload = {
-                MochilaId: mochila.MochilaId,
-                MochilaCodigo: mochila.MochilaCodigo,
+                MochilaId: token.MochilaId,
+                MochilaCodigo: token.MochilaCodigo,
                 tipo: 'iot', // Adiciona um tipo para diferenciar do token de usuário
             };
         }else{
-            return res.status(401).json({ error: 'Token de refresh inválido.' });
+            return res.status(401).json({ error: 'Tipo de token de refresh inválido' });
         }
 
 

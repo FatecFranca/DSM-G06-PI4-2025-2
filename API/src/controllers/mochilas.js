@@ -1,6 +1,5 @@
 import { prisma } from "../prisma.js";
-//import bcrypt from "bcrypt";
-import { hashSenha, roundTo2, verificarSenha } from "../utils.js";
+import { hashSenha, roundTo2, verificarSenha, verificarAssinatura } from "../utils.js";
 import { customAlphabet } from 'nanoid';
 import jwt from 'jsonwebtoken';
 
@@ -48,6 +47,69 @@ export async function obterMochilaId(req, res) {
 }
 */
 
+// Validado (15/09) - Login Mochila (IoT) com assinatura digital
+// A função de verificação da assinatura usará a chave pública.
+// Vamos supor que você tenha uma função para isso, por exemplo, 'verificarAssinatura'.
+// Ela precisaria da assinatura, do código da mochila (para buscar a chave pública)
+// e dos dados que foram assinados (como um timestamp, para evitar ataques de repetição).
+export async function loginMochila(req, res) {
+    try {
+        const { MochilaCodigo, assinatura, timestamp } = req.body;
+
+        if (!MochilaCodigo || !assinatura || !timestamp) {
+            return res.status(400).json({ error: 'Código da mochila, assinatura e timestamp são obrigatórios.' });
+        }
+
+        const mochila = await prisma.mochilas.findFirst({
+            where: {
+                MochilaCodigo: MochilaCodigo,
+                MochilaStatus: 'Ativo'
+            },
+            select: {
+                MochilaId: true,
+                MochilaCodigo: true,
+                MochilaChavePublica: true
+            }
+        });
+
+        if (!mochila) {
+            return res.status(401).json({ ok: false, message: 'Mochila não encontrada ou inativa.' });
+        }
+
+        // Dados que serão verificados, com as chaves ordenadas
+        const dadosAssinados = { MochilaCodigo, timestamp };
+
+        const assinaturaValida = verificarAssinatura(assinatura, dadosAssinados, mochila.MochilaChavePublica);
+
+        if (!assinaturaValida) {
+            return res.status(401).json({ ok: false, message: 'Assinatura inválida. Autenticação falhou.' });
+        }
+
+        const payload = {
+            MochilaId: mochila.MochilaId,
+            MochilaCodigo: mochila.MochilaCodigo,
+            tipo: 'iot',
+        };
+
+        const accessToken = jwt.sign(payload, process.env.SECRET_KEY, { expiresIn: '15m' });
+        const refreshToken = jwt.sign(payload, process.env.SECRET_KEY, { expiresIn: '1d' });
+
+        return res.status(200).json({
+            ok: true,
+            message: 'Autenticação da mochila realizada com sucesso.',
+            accessToken: accessToken,
+            refreshToken: refreshToken
+        });
+    } catch (e) {
+        console.error("Erro ao autenticar a mochila:", e);
+        return res.status(500).json({ error: 'Erro interno do servidor.' });
+    } finally {
+        await prisma.$disconnect();
+    }
+}
+
+//Antigo
+/*
 // Validado (15/09) - Login Mochila (IoT)
 export async function loginMochila(req, res) {
     try {
@@ -82,15 +144,18 @@ export async function loginMochila(req, res) {
             tipo: 'iot', // Adiciona um tipo para diferenciar do token de usuário
         };
 
-        // 3. Gera o token de acesso.
-        // O token para IoT pode ter uma validade um pouco maior, mas ainda deve ser limitado (e.g., 24h).
-        const token = jwt.sign(payload, process.env.SECRET_KEY, { expiresIn: '24h' });
+        // Gerar o token de acesso (curta duração)
+        const accessToken = jwt.sign(payload, process.env.SECRET_KEY, { expiresIn: '15m' });
+
+        // Gerar o token de acesso (longa duração)
+        const refreshToken = jwt.sign(payload, process.env.SECRET_KEY, { expiresIn: '1d' });
 
         // Retorna o token gerado com sucesso.
         return res.status(200).json({
             ok: true,
             message: 'Autenticação da mochila realizada com sucesso.',
-            token: token
+            accessToken: accessToken,
+            refreshToken: refreshToken
         });
 
     } catch (e) {
@@ -100,6 +165,7 @@ export async function loginMochila(req, res) {
         await prisma.$disconnect();
     }
 }
+*/
 
 // Validado (28/08) - Criar Mochila
 export async function criarMochila(req, res) {
@@ -118,8 +184,12 @@ export async function criarMochila(req, res) {
                 return res.status(404).json({ error: "Administrador não encontrado" });
             }
 
-            if (! await verificarSenha(password, process.env.PASSWORD_ADD_MOCHILA) || ! await verificarSenha(passwordAdmin, admin.AdminSenha)) {
+            if (! await verificarSenha(password, process.env.PASSWORD_ADD_MOCHILA)) {
                 return res.status(403).json({ error: "Senha incorreta" });
+            }
+
+            if (! await verificarSenha(passwordAdmin, admin.AdminSenha)) {
+                return res.status(403).json({ error: "Senha Incorreta" });
             }
         }
 
@@ -149,7 +219,7 @@ export async function criarMochila(req, res) {
         const MochilaSenhaHash = await hashSenha(MochilaSenha);
 
         const MochilaDtCadastro = new Date();
-        const MochilaStatus = "Ativo";
+        const MochilaStatus = "Produção";
 
         await prisma.mochilas.create({
             data: {
@@ -214,7 +284,6 @@ export async function obterMochilaCodigo(req, res) {
 }
 
 // Validado (30/08) - Obter mochilas do usuário (ativas)
-
 /*
 export async function obterMochilasUsuario(req, res) {
     try {
@@ -232,7 +301,7 @@ export async function obterMochilasUsuario(req, res) {
             return res.status(400).json({ error: 'ID do usuário não encontrado no token.' });
         }
 
-        const vinculosMochilas = await prisma.usuarios_Mochilas.findMany({
+        const vinculosMochilas = await prisma.usuariosMochilas.findMany({
         where: {
             UsuarioId: UsuarioId,
         },
@@ -292,13 +361,7 @@ export async function alterarMochila(req, res) {
             }
         }
 
-        const MochilaId  = parseInt(req.body.MochilaId);
-
         const MochilaCodigo  = req.body.MochilaCodigo;
-
-        if (!MochilaId || isNaN(MochilaId)) {
-            return res.status(400).json({ error: "ID da mochila é obrigatório"});
-        }
 
         if (!MochilaCodigo || MochilaCodigo.trim() === ''){
             return res.status(400).json({ error: "Código da mochila é inválido" });
@@ -306,15 +369,13 @@ export async function alterarMochila(req, res) {
 
         const mochila = await prisma.mochilas.findFirst({ 
             where: { 
-                MochilaId: MochilaId, 
-                MochilaCodigo: 
-                MochilaCodigo, 
-                MochilaStatus: "Ativo" 
+                MochilaCodigo: MochilaCodigo, 
+                MochilaStatus: "Produção" 
             } 
         });
 
         if (!mochila) {
-            return res.status(404).json({ error: "Mochila não encontrada ou já excluída" });
+            return res.status(404).json({ error: "Mochila não encontrada ou já excluída ou não possível edita-la" });
         }
 
         const AlterarSenha = req.body.AlterarSenha;
@@ -448,15 +509,15 @@ export async function alterarMochila(req, res) {
     }
 }
 
-// Validado (28/08) - Desativado (Exclusão lógica)
-export async function excluirMochila(req, res) {
+// Validado (28/08) - Alterar Status (Ativo, Produção)
+export async function alterarStatusMochila(req, res) {
     try {
 
-        const { password, passwordAdmin, AdminEmail } = req.body;
+        const { password, passwordAdmin, AdminEmail, MochilaStatus } = req.body;
 
         let admin;
         if (!password || password.trim() === "" || !passwordAdmin || passwordAdmin.trim() === "" || !AdminEmail || AdminEmail.trim() === "") {
-            return res.status(403).json({ error: "Senhas e e-mail obrigatórios para exclusão" });
+            return res.status(403).json({ error: "Senhas e e-mail obrigatórios para a alteração de status" });
         }else{
             admin = await prisma.admins.findUnique({
                 where: { AdminEmail: AdminEmail.trim() }
@@ -466,24 +527,65 @@ export async function excluirMochila(req, res) {
                 return res.status(404).json({ error: "Administrador não encontrado" });
             }
 
-            if (! await verificarSenha(password, process.env.PASSWORD_DELETE_MOCHILA) || ! await verificarSenha(passwordAdmin, admin.AdminSenha)) {
+            if (! await verificarSenha(password, process.env.PASSWORD_UPDATE_MOCHILA)) {
                 return res.status(403).json({ error: "Senha incorreta" });
+            }else if (! await verificarSenha(passwordAdmin, admin.AdminSenha)) {
+                return res.status(403).json({ error: "Senha Incorreta" });
             }
         }
 
-        const MochilaId  = parseInt(req.body.MochilaId);
-
         const MochilaCodigo  = req.body.MochilaCodigo;
-
-        if (!MochilaId || isNaN(MochilaId)) {
-            return res.status(400).json({ error: "ID da mochila é obrigatório"});
-        }
 
         if (!MochilaCodigo || MochilaCodigo.trim() === ''){
             return res.status(400).json({ error: "Código da mochila é inválido" });
         }
 
-        const mochila = await prisma.mochilas.findFirst({ where: { MochilaId: MochilaId, MochilaCodigo: MochilaCodigo, MochilaStatus: "Ativo" } });
+        if (!MochilaStatus || (MochilaStatus !== 'Ativo' && MochilaStatus !== 'Produção')) {
+            return res.status(400).json({ error: "Status da mochila inválido. Status permitidos ['Ativo', 'Produção']" });
+        }
+
+        const mochila = await prisma.mochilas.findFirst({ where: { MochilaCodigo: MochilaCodigo, MochilaStatus: {not: "Inativo"} } });
+
+        if (!mochila) {
+            return res.status(404).json({ error: "Mochila não encontrada ou já excluída" });
+        }
+
+        const MochilaDtAlteracao = new Date();
+
+        // Atualiza o status da mochila
+        await prisma.mochilas.update({
+            where: { MochilaId: mochila.MochilaId },
+            data: { MochilaStatus: MochilaStatus, AdminId: admin.AdminId, MochilaDtAlteracao: MochilaDtAlteracao }
+        });
+
+        return res.json({ ok: true, message: "Status da mochila alterado com sucesso" });
+
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ error: "Erro ao alterar status da mochila" });
+    } finally {
+        await prisma.$disconnect();
+    }
+}
+
+// Validado (28/08) - Desativado (Exclusão lógica)
+export async function excluirMochila(req, res) {
+    try {
+
+        const { password, passwordAdmin, AdminEmail } = req.body;
+
+        let admin;
+        if (!password || password.trim() === "" || !passwordAdmin || passwordAdmin.trim() === "" || !AdminEmail || AdminEmail.trim() === "") {
+            return res.status(403).json({ error: "Senhas e e-mail obrigatórios para exclusão" });
+        }
+
+        const MochilaCodigo  = req.body.MochilaCodigo;
+
+        if (!MochilaCodigo || MochilaCodigo.trim() === ''){
+            return res.status(400).json({ error: "Código da mochila é inválido" });
+        }
+
+        const mochila = await prisma.mochilas.findFirst({ where: { MochilaCodigo: MochilaCodigo, MochilaStatus: "Ativo" } });
 
         if (!mochila) {
             return res.status(404).json({ error: "Mochila não encontrada ou já excluída" });
@@ -510,7 +612,7 @@ export async function excluirMochila(req, res) {
 
         // Atualiza o status da mochila
         await prisma.mochilas.update({
-            where: { MochilaId: MochilaId, MochilaStatus: "Ativo" },
+            where: { MochilaStatus: "Ativo", MochilaId: mochila.MochilaId },
             data: { MochilaStatus: "Inativo", AdminId: admin.AdminId, MochilaDtAlteracao: MochilaDtAlteracao }
         });
 

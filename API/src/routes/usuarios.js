@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { criarUsuario, obterUsuarioLogado, alterarUsuario, login, excluirUsuario } from '../controllers/usuarios.js';
+import { criarUsuario, obterUsuarioLogado, alterarUsuario, login, excluirUsuario, logout } from '../controllers/usuarios.js';
 
 const r = Router();
 
@@ -53,6 +53,14 @@ JSON Example
   "UsuarioEmail": "exemplo@email.com",
   "UsuarioSenha": "Senha",
   "TipoLogin": "App" ou "Web"
+}
+*/
+
+r.post('/logout', logout);
+/*
+JSON Example
+{
+  "token": "Bearer token_de_refresh_aqui"
 }
 */
 

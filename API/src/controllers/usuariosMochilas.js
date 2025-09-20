@@ -7,7 +7,7 @@ import { verificarToken } from '../utils.js';
 /*
 export async function listarUsuariosMochilas(req, res){
   try {
-    const usuariosMochilas = await prisma.usuarios_Mochilas.findMany({
+    const usuariosMochilas = await prisma.usuariosMochilas.findMany({
       orderBy: {
         DataFimUso: 'desc'
       }
@@ -44,7 +44,7 @@ export async function obterMochilaUsuario(req, res) {
       return res.status(400).json({ error: "ID do usuário inválido" });
     }
 
-    const mochilasUsuario = await prisma.usuarios_Mochilas.findMany({
+    const mochilasUsuario = await prisma.usuariosMochilas.findMany({
       where: {
         UsuarioId: UsuarioId
       },
@@ -124,7 +124,7 @@ export async function vincularMochila(req, res) {
       return res.status(400).json({ error: "ID do usuário inválido" });
     }
 
-    const mochila = await prisma.mochilas.findUnique({ where: { MochilaCodigo: MochilaCodigo } });
+    const mochila = await prisma.mochilas.findUnique({ where: { MochilaCodigo: MochilaCodigo, MochilaStatus: 'Ativo' } });
     if (!mochila) {
       return res.status(404).json({ error: 'Mochila não encontrada' });
     }
@@ -135,7 +135,7 @@ export async function vincularMochila(req, res) {
     }
 
     // Verifica se já existe um vínculo ativo
-    const usuarioMochilaExistente = await prisma.usuarios_Mochilas.findFirst({
+    const usuarioMochilaExistente = await prisma.usuariosMochilas.findFirst({
       where: { UsuarioId: UsuarioId, MochilaId: mochila.MochilaId }
     });
 
@@ -144,7 +144,7 @@ export async function vincularMochila(req, res) {
     }
 
     // Cria o vínculo
-    await prisma.usuarios_Mochilas.create({
+    await prisma.usuariosMochilas.create({
       data: {
         UsuarioId: UsuarioId,
         MochilaId: mochila.MochilaId,
@@ -207,7 +207,7 @@ export async function assumirUsoMochila(req, res) {
       return res.status(404).json({ error: 'Usuário não encontrado' });
     }
 
-    const usuarioMochila = await prisma.usuarios_Mochilas.findFirst({
+    const usuarioMochila = await prisma.usuariosMochilas.findFirst({
       where: { MochilaId: mochila.MochilaId, UsuarioId: UsuarioId }
     });
 
@@ -215,7 +215,7 @@ export async function assumirUsoMochila(req, res) {
       return res.status(404).json({ error: 'Vínculo entre usuário e mochila não encontrado' });
     }
 
-    let usuarioMochilaUsando = await prisma.usuarios_Mochilas.findFirst({
+    let usuarioMochilaUsando = await prisma.usuariosMochilas.findFirst({
       where: {
         MochilaId: mochila.MochilaId,
         UsoStatus: 'Usando'
@@ -230,7 +230,7 @@ export async function assumirUsoMochila(req, res) {
       }
     }
 
-    usuarioMochilaUsando = await prisma.usuarios_Mochilas.findFirst({
+    usuarioMochilaUsando = await prisma.usuariosMochilas.findFirst({
       where: {
         UsuarioId: UsuarioId,
         NOT: { MochilaId: mochila.MochilaId },
@@ -239,7 +239,7 @@ export async function assumirUsoMochila(req, res) {
     });
 
     if (!usuarioMochilaUsando) {
-      usuarioMochilaUsando = await prisma.usuarios_Mochilas.findFirst({
+      usuarioMochilaUsando = await prisma.usuariosMochilas.findFirst({
         where: {
           UsuarioId: UsuarioId,
           NOT: { MochilaId: mochila.MochilaId },
@@ -252,11 +252,11 @@ export async function assumirUsoMochila(req, res) {
 
     // Atualização ATÔMICA: só assume se ninguém estiver ativo
     const rows = await prisma.$queryRaw`
-      UPDATE "Usuarios_Mochilas"
+      UPDATE "UsuariosMochilas"
       SET "DataInicioUso" = ${hojeAgora}, "DataFimUso" = NULL, "UsoStatus" = 'Usando'
       WHERE "UsuarioId" = ${UsuarioId} AND "MochilaId" = ${mochila.MochilaId}
         AND NOT EXISTS (
-          SELECT 1 FROM "Usuarios_Mochilas"
+          SELECT 1 FROM "UsuariosMochilas"
           WHERE "MochilaId" = ${mochila.MochilaId} AND "DataFimUso" IS NULL
           AND NOT ("UsuarioId" = ${UsuarioId})
         )
@@ -266,7 +266,7 @@ export async function assumirUsoMochila(req, res) {
     if (rows.length === 0) {
       return res.status(409).json({ error: 'Mochila já está em uso por outro usuário' });
     } else {
-      await prisma.usuarios_Mochilas.updateMany({
+      await prisma.usuariosMochilas.updateMany({
         where: {
           MochilaId: mochila.MochilaId,
           UsoStatus: 'Último a Usar'
@@ -278,7 +278,7 @@ export async function assumirUsoMochila(req, res) {
     }
 
     if (usuarioMochilaUsando) {
-      await prisma.usuarios_Mochilas.update({
+      await prisma.usuariosMochilas.update({
         where: {
           UsuarioId_MochilaId: {
             UsuarioId: usuarioMochilaUsando.UsuarioId,
@@ -345,7 +345,7 @@ export async function encerrarUsoApp(req, res) {
       return res.status(404).json({ error: 'Usuário não encontrado' });
     }
 
-    const encerrado = await prisma.usuarios_Mochilas.updateMany({
+    const encerrado = await prisma.usuariosMochilas.updateMany({
       where: { UsuarioId: UsuarioId, MochilaId: mochila.MochilaId, OR: [{ UsoStatus: 'Usando' }, { UsoStatus: 'Último a Usar' }] },
       data: { DataFimUso: new Date(), UsoStatus: 'Não Usando' }
     });
@@ -389,7 +389,7 @@ export async function encerrarUsoIOT(req, res) {
       return res.status(404).json({ error: 'Mochila não encontrada' });
     }
 
-    const encerrado = await prisma.usuarios_Mochilas.updateMany({
+    const encerrado = await prisma.usuariosMochilas.updateMany({
       where: { MochilaId: mochila.MochilaId, UsoStatus: 'Usando', DataFimUso: null },
       data: { DataFimUso: new Date(), UsoStatus: 'Último a Usar' }
     });
