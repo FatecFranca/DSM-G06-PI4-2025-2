@@ -2,25 +2,46 @@ import React, { useState } from "react";
 import { View, Text, TextInput, TouchableOpacity, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { ToastAndroid } from "react-native";
+import { validarEmail, validarSenha } from "../utils/validacoes";
 
 export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
 
   const handleConfirmar = async () => {
+    // 1. Validar e-mail
+    if (!email) {
+      ToastAndroid.show("E-mail é obrigatório", ToastAndroid.SHORT);
+      return;
+    }
+    if (!validarEmail(email)) {
+      ToastAndroid.show("E-mail inválido", ToastAndroid.SHORT);
+      return;
+    }
+
+    // 2. Validar senha
+    if (!senha) {
+      ToastAndroid.show("Senha é obrigatória", ToastAndroid.SHORT);
+      return;
+    }
+    const senhaValidada = validarSenha(senha);
+    if (!senhaValidada.valido) {
+      ToastAndroid.show(senhaValidada.erro, ToastAndroid.SHORT);
+      return;
+    }
+
     try {
-      // Criar um timeout de 3 segundos
+      // Timeout 3s
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 3000);
 
-      const response = await fetch("http://192.168.100.249:3000/funcionarios/login", {
+      const response = await fetch("http://192.168.100.249:3000/usuarios/login", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           UsuarioEmail: email,
-          UsuarioSenha: senha
+          UsuarioSenha: senha,
+          TipoLogin: "App" // já valida aqui
         }),
         signal: controller.signal
       });
