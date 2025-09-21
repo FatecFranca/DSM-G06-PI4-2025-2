@@ -16,6 +16,19 @@ export async function criptografarSenha(req, res) {
 }
 */
 
+// Validar
+/*
+export async function logout(req, res) {
+    try {
+        logout(); // Remove o token JWT do armazenamento do navegador
+        return res.status(200).json({ ok: true, message: 'Usuário deslogado com sucesso' });
+    } catch (e) {
+        console.error(e);
+        return res.status(500).json({ error: 'Erro ao encerrar sessão' });
+    }
+}
+s*/
+
 // Validado (26/08) - Desativar (Apenas para testes)
 /*
 export async function obterUsuarios(req, res) {
@@ -25,6 +38,65 @@ export async function obterUsuarios(req, res) {
     } catch (error) {
         console.error(error);
         return res.status(500).json({ error: "Erro ao obter usuários" });
+    }
+}
+*/
+
+// Validado (14/09/25) - Obter usuário por e-mail
+/*
+export async function obterUsuarioEmail(req, res) {
+    try {
+
+        let dadosUsuario = null;
+        if (! await verificarToken(req)) {
+            return res.status(401).json({ error: 'Usuário não autenticado' });
+        } else {
+            dadosUsuario = await verificarToken(req);
+        }
+
+        const UsuarioEmail = req.params.email;
+
+        const UsuarioId = Number(dadosUsuario.UsuarioId);
+
+        if (!dadosUsuario.tipo) {
+            return res.status(403).json({ error: "Token iválido para usuário" });
+        }
+
+        if (dadosUsuario.tipo !== 'usuario') {
+            return res.status(403).json({ error: "Token iválido para usuário" });
+        }
+
+        if (!UsuarioEmail) {
+            return res.status(400).json({ error: 'E-mail é obrigatório' });
+        }
+
+        const usuario = await prisma.usuarios.findUnique({
+            where: {
+                UsuarioEmail: UsuarioEmail,
+                UsuarioId: UsuarioId
+            },
+            select: {
+                UsuarioNome: true,
+                UsuarioEmail: true,
+                UsuarioDtNascimento: true,
+                UsuarioPeso: true,
+                UsuarioAltura: true,
+                UsuarioSexo: true,
+                UsuarioFoto: true,
+                UsuarioPesoMaximoPorcentagem: true
+            }
+        });
+
+        if (!usuario) {
+            return res.status(404).json({ error: 'Usuário não encontrado ou não autorizado a obter os seus dados' });
+        }
+
+        return res.status(200).json(usuario);
+    } catch (e) {
+        console.error(e);
+        return res.status(500).json({ error: 'Erro ao obter usuário por e-mail' });
+    } finally {
+        await prisma.$disconnect();
     }
 }
 */
@@ -143,65 +215,6 @@ export async function criarUsuario(req, res) {
         await prisma.$disconnect();
     }
 }
-
-// Validado (14/09/25) - Obter usuário por e-mail
-/*
-export async function obterUsuarioEmail(req, res) {
-    try {
-
-        let dadosUsuario = null;
-        if (! await verificarToken(req)) {
-            return res.status(401).json({ error: 'Usuário não autenticado' });
-        } else {
-            dadosUsuario = await verificarToken(req);
-        }
-
-        const UsuarioEmail = req.params.email;
-
-        const UsuarioId = Number(dadosUsuario.UsuarioId);
-
-        if (!dadosUsuario.tipo) {
-            return res.status(403).json({ error: "Token iválido para usuário" });
-        }
-
-        if (dadosUsuario.tipo !== 'usuario') {
-            return res.status(403).json({ error: "Token iválido para usuário" });
-        }
-
-        if (!UsuarioEmail) {
-            return res.status(400).json({ error: 'E-mail é obrigatório' });
-        }
-
-        const usuario = await prisma.usuarios.findUnique({
-            where: {
-                UsuarioEmail: UsuarioEmail,
-                UsuarioId: UsuarioId
-            },
-            select: {
-                UsuarioNome: true,
-                UsuarioEmail: true,
-                UsuarioDtNascimento: true,
-                UsuarioPeso: true,
-                UsuarioAltura: true,
-                UsuarioSexo: true,
-                UsuarioFoto: true,
-                UsuarioPesoMaximoPorcentagem: true
-            }
-        });
-
-        if (!usuario) {
-            return res.status(404).json({ error: 'Usuário não encontrado ou não autorizado a obter os seus dados' });
-        }
-
-        return res.status(200).json(usuario);
-    } catch (e) {
-        console.error(e);
-        return res.status(500).json({ error: 'Erro ao obter usuário por e-mail' });
-    } finally {
-        await prisma.$disconnect();
-    }
-}
-*/
 
 // Validado (14/09/25) - Obter usuário logado
 export async function obterUsuarioLogado(req, res) {
@@ -524,19 +537,6 @@ export async function logout(req, res) {
         await prisma.$disconnect();
     }
 }
-
-// Validar
-/*
-export async function logout(req, res) {
-    try {
-        logout(); // Remove o token JWT do armazenamento do navegador
-        return res.status(200).json({ ok: true, message: 'Usuário deslogado com sucesso' });
-    } catch (e) {
-        console.error(e);
-        return res.status(500).json({ error: 'Erro ao encerrar sessão' });
-    }
-}
-s*/
 
 // Validado (14/09/25) - Excluir usuário
 export async function excluirUsuario(req, res) {
