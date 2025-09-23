@@ -3,7 +3,8 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, Platform, ToastAnd
 import { Ionicons } from "@expo/vector-icons";
 import { Picker } from "@react-native-picker/picker";
 import DateTimePicker from "@react-native-community/datetimepicker";
-import { validarEmail, validarSenha, diferencaEntreDatas } from "../utils/validacoes";
+import { validarEmail, validarSenha, diferencaEntreDatas, delay } from "../utils/validacoes";
+import { LINKAPI, PORTAPI } from "@env";
 
 export default function RegisterScreen({ navigation }) {
   const [email, setEmail] = useState("");
@@ -104,7 +105,7 @@ export default function RegisterScreen({ navigation }) {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 3000);
 
-      const response = await fetch("http://192.168.100.249:3000/usuarios", {
+      const response = await fetch(LINKAPI + PORTAPI + "/usuarios", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -131,7 +132,9 @@ export default function RegisterScreen({ navigation }) {
 
       const data = await response.json();
       ToastAndroid.show("Cadastro realizado com sucesso!", ToastAndroid.SHORT);
-      console.log("Usuário cadastrado:", data);
+      //console.log("Usuário cadastrado:", data);
+
+      await delay(1500);
 
       // redireciona para login
       navigation.navigate("login");
@@ -152,7 +155,14 @@ export default function RegisterScreen({ navigation }) {
   return (
     <View style={styles.container}>
       {/* Botão Voltar */}
-      <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+      <TouchableOpacity
+        style={styles.backButton}
+        onPress={() => {
+          if (navigation.canGoBack()) {
+            navigation.goBack();
+          }
+        }}
+      >
         <Ionicons name="arrow-back" size={28} color="#3A3A3A" />
       </TouchableOpacity>
 

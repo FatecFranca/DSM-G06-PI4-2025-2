@@ -1,3 +1,5 @@
+import * as SecureStore from "expo-secure-store";
+
 export function validarEmail(email) {
   const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return regex.test(email);
@@ -77,3 +79,24 @@ export function diferencaEntreDatas(data1, data2, unidade, decimal) {
       return false;
   }
 }
+
+// Salvar tokens
+export async function salvarTokens(accessToken, refreshToken) {
+  await SecureStore.setItemAsync("accessToken", accessToken);
+  await SecureStore.setItemAsync("refreshToken", refreshToken);
+}
+
+// Buscar tokens
+export async function pegarTokens() {
+  const accessToken = await SecureStore.getItemAsync("accessToken");
+  const refreshToken = await SecureStore.getItemAsync("refreshToken");
+  return { accessToken, refreshToken };
+}
+
+// Remover tokens (logout)
+export async function limparTokens() {
+  await SecureStore.deleteItemAsync("accessToken");
+  await SecureStore.deleteItemAsync("refreshToken");
+}
+
+export const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));

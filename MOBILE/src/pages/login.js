@@ -1,49 +1,29 @@
-import React, { useState } from "react";
-import { View, Text, TextInput, TouchableOpacity, StyleSheet } from "react-native";
+import React, { useState, useContext } from "react";
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ToastAndroid } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { ToastAndroid } from "react-native";
-import { validarEmail, validarSenha } from "../utils/validacoes";
+import { AuthContext } from "../contexts/AuthContext";
+import { LINKAPI, PORTAPI } from "@env";
 
 export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
+  const { salvarTokens } = useContext(AuthContext);
 
-  const handleConfirmar = async () => {
-    // 1. Validar e-mail
-    if (!email) {
-      ToastAndroid.show("E-mail é obrigatório", ToastAndroid.SHORT);
-      return;
-    }
-    if (!validarEmail(email)) {
-      ToastAndroid.show("E-mail inválido", ToastAndroid.SHORT);
-      return;
-    }
-
-    // 2. Validar senha
-    if (!senha) {
-      ToastAndroid.show("Senha é obrigatória", ToastAndroid.SHORT);
-      return;
-    }
-    const senhaValidada = validarSenha(senha);
-    if (!senhaValidada.valido) {
-      ToastAndroid.show(senhaValidada.erro, ToastAndroid.SHORT);
-      return;
-    }
-
+  const handleLogin = async () => {
     try {
       // Timeout 3s
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 3000);
 
-      const response = await fetch("http://192.168.100.249:3000/usuarios/login", {
+      const response = await fetch(LINKAPI + PORTAPI + "/usuarios/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           UsuarioEmail: email,
           UsuarioSenha: senha,
-          TipoLogin: "App" // já valida aqui
+          TipoLogin: "App",
         }),
-        signal: controller.signal
+        signal: controller.signal,
       });
 
       clearTimeout(timeout);
@@ -55,26 +35,33 @@ export default function LoginScreen({ navigation }) {
       }
 
       const data = await response.json();
-      ToastAndroid.show("Login realizado com sucesso!", ToastAndroid.SHORT);
-      console.log("Usuário:", data);
 
+      // 🔑 Salvar tokens no contexto (e SecureStore)
+      await salvarTokens(data.accessToken, data.refreshToken);
+
+      // Depois do login, redireciona
+      navigation.navigate("home"); // Ajuste conforme sua rota principal
     } catch (error) {
       if (error.name === "AbortError") {
         ToastAndroid.show("Servidor demorou a responder", ToastAndroid.SHORT);
       } else {
         ToastAndroid.show("Erro ao conectar no servidor", ToastAndroid.SHORT);
+        //console.error("Erro ao fazer login:", error);
       }
     }
-  };
-
-  const register = () => {
-    navigation.navigate("register");
   };
 
   return (
     <View style={styles.container}>
       {/* Botão Voltar */}
-      <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+      <TouchableOpacity
+        style={styles.backButton}
+        onPress={() => {
+          if (navigation.canGoBack()) {
+            navigation.goBack();
+          }
+        }}
+      >
         <Ionicons name="arrow-back" size={28} color="#3A3A3A" />
       </TouchableOpacity>
 
@@ -86,6 +73,7 @@ export default function LoginScreen({ navigation }) {
           placeholder="INFORME SEU E-MAIL"
           placeholderTextColor="#3A3A3A"
           value={email}
+          keyboardType="email-address"
           onChangeText={setEmail}
         />
 
@@ -98,16 +86,12 @@ export default function LoginScreen({ navigation }) {
           onChangeText={setSenha}
         />
 
-        <TouchableOpacity style={styles.button} onPress={handleConfirmar}>
-          <Text style={styles.buttonText}>CONFIRMAR</Text>
+        <TouchableOpacity style={styles.button} onPress={handleLogin}>
+          <Text style={styles.buttonText}>ENTRAR</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity>
-          <Text style={styles.link}>ESQUECI A SENHA</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity onPress={register}>
-          <Text style={styles.link}>NÃO TEM CONTA? CRIE UMA</Text>
+        <TouchableOpacity onPress={() => navigation.navigate("register")}>
+          <Text style={styles.link}>NÃO TEM CONTA? CADASTRE-SE</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -117,7 +101,7 @@ export default function LoginScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#B6F5C0", // Fundo verde claro
+    backgroundColor: "#B6F5C0",
     justifyContent: "center",
     alignItems: "center",
   },
@@ -140,11 +124,11 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 20,
     fontWeight: "bold",
-    color: "#FF5C8D", // Rosa
+    color: "#FF5C8D",
     marginBottom: 20,
   },
   input: {
-    backgroundColor: "#9FFBF7", // Azul claro
+    backgroundColor: "#9FFBF7",
     width: "100%",
     padding: 12,
     borderRadius: 10,
@@ -153,7 +137,7 @@ const styles = StyleSheet.create({
     color: "#000",
   },
   button: {
-    backgroundColor: "#5CFF5C", // Verde neon
+    backgroundColor: "#5CFF5C",
     paddingVertical: 12,
     paddingHorizontal: 30,
     borderRadius: 12,
