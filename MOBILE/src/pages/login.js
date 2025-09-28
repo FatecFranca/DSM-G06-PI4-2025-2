@@ -1,19 +1,32 @@
 import React, { useState, useContext } from "react";
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ToastAndroid } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { AuthContext } from "../contexts/AuthContext";
-import { LINKAPI, PORTAPI } from "@env";
+//import { LINKAPI, PORTAPI } from "@env";
+import { LINKAPI, PORTAPI } from "../utils/global";
+import { validarEmail, salvarTokens } from "../utils/validacoes";
 
 export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
-  const { salvarTokens } = useContext(AuthContext);
 
   const handleLogin = async () => {
     try {
       // Timeout 3s
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 3000);
+
+      if (!validarEmail(email)) {
+        ToastAndroid.show("Estrututura de E-mail inválida", ToastAndroid.SHORT);
+        return;
+      }
+
+      if (senha.trim().length === 0) {
+        ToastAndroid.show("Informe a Senha", ToastAndroid.SHORT);
+        return;
+      }
+
+      const link = LINKAPI + PORTAPI + "/usuarios/login";
+      console.log("Fazendo login em:", link);
 
       const response = await fetch(LINKAPI + PORTAPI + "/usuarios/login", {
         method: "POST",
@@ -36,8 +49,10 @@ export default function LoginScreen({ navigation }) {
 
       const data = await response.json();
 
-      // 🔑 Salvar tokens no contexto (e SecureStore)
+      // Salvar tokens no contexto (e SecureStore)
       await salvarTokens(data.accessToken, data.refreshToken);
+
+      console.log("Access Token:" + data.accessToken + " | Refresh Token:" + data.refreshToken);
 
       // Depois do login, redireciona
       navigation.navigate("home"); // Ajuste conforme sua rota principal

@@ -4,7 +4,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { Picker } from "@react-native-picker/picker";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { validarEmail, validarSenha, diferencaEntreDatas, delay } from "../utils/validacoes";
-import { LINKAPI, PORTAPI } from "@env";
+//import { LINKAPI, PORTAPI } from "@env";
+import { LINKAPI, PORTAPI } from "../utils/global";
 
 export default function RegisterScreen({ navigation }) {
   const [email, setEmail] = useState("");

@@ -48,6 +48,10 @@ export async function refresh(req, res) {
             return res.status(401).json({ error: 'Token de refresh inválido ou expirado.' });
         }
 
+        if (!token.nivel || token.nivel !== 'refresh') {
+            return res.status(401).json({ error: 'Token de refresh inválido' });
+        }
+
         let payload = {};
         if (token.UsuarioId && token.UsuarioEmail && token.tipo === 'usuario') {
             payload = {

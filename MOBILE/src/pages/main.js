@@ -1,16 +1,24 @@
 import React, { useEffect, useContext } from "react";
 import { View, Text, StyleSheet, Image, ActivityIndicator, ToastAndroid } from "react-native";
-import { AuthContext } from "../contexts/AuthContext";
 import { delay } from "../utils/validacoes";
-import { LINKAPI, PORTAPI } from "@env";
+//import { LINKAPI, PORTAPI } from "@env";
+import { LINKAPI, PORTAPI } from "../utils/global";
+import { pegarTokens, salvarTokens, limparTokens } from "../utils/validacoes";
 
 export default function MainScreen({ navigation }) {
-  const { accessToken, refreshToken, salvarTokens, limparTokens } = useContext(AuthContext);
 
   const validarEntrada = async () => {
     try {
 
       await delay(1000); // Simula loading
+
+      const tokens = await pegarTokens();
+      const { accessToken, refreshToken } = tokens;
+
+      //console.log("Access Token salvo:" + accessToken);
+      //console.log("Refresh Token salvo:" + refreshToken);
+      //console.log("Link API:" + LINKAPI + PORTAPI);
+      //console.log("tkens:", tokens);
 
       if (!accessToken) {
         navigation.replace("login");
@@ -18,7 +26,7 @@ export default function MainScreen({ navigation }) {
       }
 
       // 1. Valida accessToken
-      let response = await fetch(LINKAPI + PORTAPI + "/tokenJWT/validarToken", {
+      let response = await fetch(LINKAPI + PORTAPI + "/token/validarToken", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -33,15 +41,15 @@ export default function MainScreen({ navigation }) {
 
       // 2. Se expirado, tenta refresh
       if (refreshToken) {
-        response = await fetch(LINKAPI + PORTAPI + "/tokenJWT/refresh", {
+        response = await fetch(LINKAPI + PORTAPI + "/token/refresh", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ refreshToken }),
+          body: JSON.stringify({ token: "Bearer " + refreshToken }),
         });
 
         if (response.ok) {
           const data = await response.json();
-          await salvarTokens(data.accessToken, data.refreshToken);
+          await salvarTokens(data.accessToken);
           navigation.replace("home");
           return;
         }

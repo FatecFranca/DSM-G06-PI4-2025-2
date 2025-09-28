@@ -468,7 +468,7 @@ export async function login(req, res) {
         // Cria a sessão do usuário
         //await criaSessao(req, usuario.UsuarioId, usuario.UsuarioEmail);
 
-        const payload = {
+        let payload = {
             UsuarioId: usuario.UsuarioId,
             UsuarioEmail: usuario.UsuarioEmail,
             tipo: 'usuario' // Adiciona um tipo para diferenciar do token de IoT
@@ -476,6 +476,13 @@ export async function login(req, res) {
 
         // 1. Gerar o token de acesso (curta duração)
         const accessToken = jwt.sign(payload, process.env.SECRET_KEY, { expiresIn: '15m' });
+
+        payload = {
+            UsuarioId: usuario.UsuarioId,
+            UsuarioEmail: usuario.UsuarioEmail,
+            tipo: 'usuario', // Adiciona um tipo para diferenciar do token de IoT
+            nivel: 'refresh' // Indica que este é um token de refresh
+        };
 
         // 2. Gerar o token de refresh (longa duração)
         let refreshToken;
