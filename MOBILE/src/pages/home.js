@@ -6,7 +6,7 @@ import * as Progress from "react-native-progress";
 import BottomNav from "../components/BottomNav";
 import SettingsModal from "../components/SettingsModal";
 
-import { pegarTokens, salvarTokens, limparTokens, roundTo2 } from "../utils/validacoes";
+import { pegarTokens, salvarTokens, limparTokens, roundTo2, delay } from "../utils/validacoes";
 import { LINKAPI, PORTAPI } from "../utils/global";
 
 export default function HomeScreen({ navigation }) {
@@ -30,6 +30,7 @@ export default function HomeScreen({ navigation }) {
   const [percEsquerdo, setPercEsquerdo] = useState(1);
   const [percDireito, setPercDireito] = useState(1);
   const [temMochila, setTemMochila] = useState(true);
+  const [mostrarTela, setMostrarTela] = useState(false);
 
   // const pesoTotal = pesoEsquerdo + pesoDireito;
 
@@ -258,24 +259,24 @@ export default function HomeScreen({ navigation }) {
         ToastAndroid.show("Servidor demorou a responder", ToastAndroid.SHORT);
       } else {
         //ToastAndroid.show("Erro ao conectar no servidor", ToastAndroid.SHORT);
-        Alert.alert('Erro', 'Erro ao conectar no servidor. \nVerifique sua conexão ou tente novamente mais tarde.')
+        //Alert.alert('Erro', 'Erro ao conectar no servidor. \nVerifique sua conexão ou tente novamente mais tarde.')
         navigation.reset({
           index: 0,
-          routes: [{ name: "login" }],
+          routes: [{ name: "main" }],
         });
         return;
       }
+    } finally {
+      setMostrarTela(true);
     }
   };
 
-
-
-  return (
+  return mostrarTela ? (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         {/* Parte de cima com imagem */}
         <View style={styles.topContainer}>
-          <Text style={{ color: "#000", fontWeight: "600", fontSize: 18, marginBottom: 30, textAlign: "center"}}>
+          <Text style={{ color: "#000", fontWeight: "600", fontSize: 18, marginBottom: 30, textAlign: "center" }}>
             Olá, {nomePessoa}! {"\n"}Peso em Tempo Real
           </Text>
           <Image
@@ -356,6 +357,32 @@ export default function HomeScreen({ navigation }) {
         onOpenSettings={() => setSettingsVisible(true)} // passa a função
       />
     </View>
+  ) : (
+    <View style={styles.container}>
+      <ScrollView contentContainerStyle={styles.scrollContainer}>
+        
+      </ScrollView>
+      {/* Modal de Configurações */}
+      <SettingsModal
+        visible={settingsVisible}
+        onClose={() => setSettingsVisible(false)}
+        onToggleTheme={() => setDarkTheme(!darkTheme)}
+        isDarkTheme={darkTheme}
+        onLogout={() => {
+          setSettingsVisible(false);
+          navigation.reset({
+            index: 0,
+            routes: [{ name: "Login" }],
+          });
+        }}
+      />
+
+      {/* Barra inferior reutilizável */}
+      <BottomNav
+        navigation={navigation}
+        onOpenSettings={() => setSettingsVisible(true)} // passa a função
+      />
+    </View>
   );
 }
 
@@ -409,5 +436,11 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     width: "90%",
     marginTop: 8,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#fff',
   },
 });

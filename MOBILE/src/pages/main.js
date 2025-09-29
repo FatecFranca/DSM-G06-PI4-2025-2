@@ -1,11 +1,29 @@
 import React, { useEffect, useContext } from "react";
-import { View, Text, StyleSheet, Image, ActivityIndicator, ToastAndroid } from "react-native";
+import { View, Text, StyleSheet, Image, ActivityIndicator, ToastAndroid, BackHandler, Alert } from "react-native";
 import { delay } from "../utils/validacoes";
 //import { LINKAPI, PORTAPI } from "@env";
 import { LINKAPI, PORTAPI } from "../utils/global";
 import { pegarTokens, salvarTokens, limparTokens } from "../utils/validacoes";
 
 export default function MainScreen({ navigation }) {
+
+  const mostrarErroFatal = () => {
+    Alert.alert(
+      "Erro", // Título
+      "Erro ao conectar no servidor. \nVerifique sua conexão ou tente novamente mais tarde.", // Mensagem
+      [
+        {
+          text: "OK",
+          // A função onPress é o 'callback'
+          onPress: () => {
+            // O app só fechará APÓS o usuário tocar em "OK"
+            BackHandler.exitApp();
+          }
+        }
+      ],
+      { cancelable: false } // Garante que o usuário tem que tocar no botão (Android)
+    );
+  };
 
   const validarEntrada = async () => {
     try {
@@ -61,9 +79,11 @@ export default function MainScreen({ navigation }) {
       delay(2000);
       navigation.replace("login");
     } catch (error) {
-      console.error("Erro ao validar tokens:", error);
-      ToastAndroid.show("Erro ao validar sessão", ToastAndroid.SHORT);
-      navigation.replace("login");
+      if (error.name === "AbortError") {
+        return ToastAndroid.show("Servidor demorou a responder", ToastAndroid.SHORT);
+      } else {
+        mostrarErroFatal();
+      }
     }
   };
 
