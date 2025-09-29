@@ -18,6 +18,10 @@ export default function RegisterScreen({ navigation }) {
   const [sexo, setSexo] = useState("");
 
   const handleConfirmar = async () => {
+
+    const pesoParaAPI = peso.replace(',', '.');
+    const alturaParaAPI = altura.replace(',', '.');
+
     // Nome
     if (!nome || nome.trim() === "") {
       ToastAndroid.show("Nome é obrigatório", ToastAndroid.SHORT);
@@ -65,22 +69,22 @@ export default function RegisterScreen({ navigation }) {
     }
 
     // Peso
-    if (!peso) {
+    if (!pesoParaAPI) {
       ToastAndroid.show("Peso é obrigatório", ToastAndroid.SHORT);
       return;
     }
-    if (Number(peso) < 9) {
+    if (Number(pesoParaAPI) < 9) {
       ToastAndroid.show("Peso mínimo para carregar mochila é 9kg", ToastAndroid.SHORT);
       return;
     }
 
     // Altura
-    if (!altura) {
+    if (!alturaParaAPI) {
       ToastAndroid.show("Altura é obrigatória", ToastAndroid.SHORT);
       return;
     }
-    if (Number(altura) < 0.8) {
-      ToastAndroid.show("Altura mínima é 0,80m", ToastAndroid.SHORT);
+    if (Number(alturaParaAPI) < 0.8) {
+      ToastAndroid.show("Altura mínima é 0,80 m", ToastAndroid.SHORT);
       return;
     }
 
@@ -91,6 +95,7 @@ export default function RegisterScreen({ navigation }) {
     }
 
     // Se passou em todas validações
+    /*
     console.log({
       nome,
       email,
@@ -100,6 +105,7 @@ export default function RegisterScreen({ navigation }) {
       dtNascimento,
       sexo,
     });
+    */
 
     try {
       // Timeout 3s
@@ -114,8 +120,8 @@ export default function RegisterScreen({ navigation }) {
           UsuarioEmail: email,
           UsuarioSenha: senha,
           UsuarioDtNascimento: dtNascimento, // já vem como Date do picker
-          UsuarioPeso: peso,
-          UsuarioAltura: altura,
+          UsuarioPeso: pesoParaAPI,
+          UsuarioAltura: alturaParaAPI,
           UsuarioSexo: sexo,
           UsuarioFoto: null, // opcional por enquanto
           UsuarioPesoMaximoPorcentagem: null // usa padrão do backend (10%)
@@ -207,8 +213,11 @@ export default function RegisterScreen({ navigation }) {
             value={peso}
             keyboardType="numeric"
             onChangeText={(text) => {
-              const regex = /^\d*\.?\d{0,2}$/;
-              if (regex.test(text)) setPeso(text);
+              // Permite dígitos, opcionalmente seguidos por vírgula e até 2 casas decimais.
+              const regex = /^\d*\,?\d{0,2}$/; 
+              
+              // Se o usuário apagar tudo, aceita string vazia.
+              if (regex.test(text) || text === "") setPeso(text);
             }}
           />
 
@@ -219,8 +228,11 @@ export default function RegisterScreen({ navigation }) {
             value={altura}
             keyboardType="numeric"
             onChangeText={(text) => {
-              const regex = /^\d*\.?\d{0,2}$/;
-              if (regex.test(text)) setAltura(text);
+              // Permite dígitos, opcionalmente seguidos por vírgula e até 2 casas decimais.
+              const regex = /^\d*\,?\d{0,2}$/;
+              
+              // Se o usuário apagar tudo, aceita string vazia.
+              if (regex.test(text) || text === "") setAltura(text);
             }}
           />
         </View>

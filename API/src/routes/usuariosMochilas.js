@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { assumirUsoMochila, encerrarUsoApp, encerrarUsoIOT, vincularMochila, obterMochilaUsuario } from '../controllers/usuariosMochilas.js';
+import { assumirUsoMochila, encerrarUsoApp, encerrarUsoIOT, vincularMochila, obterMochilaUsuario, obterMochilaUsuarioUso } from '../controllers/usuariosMochilas.js';
 const r = Router();
 
 //r.get('/', listarUsuariosMochilas);
@@ -12,6 +12,9 @@ r.post('/assumir', assumirUsoMochila);
     "MochilaCodigo": "58PiojQh2otM"
 }
 */
+
+r.get('/mochilaUso', obterMochilaUsuarioUso); 
+
 
 r.post('/encerrarUsoApp', encerrarUsoApp); 
 /*

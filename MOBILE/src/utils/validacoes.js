@@ -82,8 +82,8 @@ export function diferencaEntreDatas(data1, data2, unidade, decimal) {
 
 // Salvar tokens
 export async function salvarTokens(accessToken, refreshToken) {
-  await SecureStore.setItemAsync("accessToken", accessToken);
-  await SecureStore.setItemAsync("refreshToken", refreshToken);
+  await SecureStore.setItemAsync("accessToken", String(accessToken));
+  await SecureStore.setItemAsync("refreshToken", String(refreshToken));
 }
 
 // Buscar tokens
@@ -97,6 +97,10 @@ export async function pegarTokens() {
 export async function limparTokens() {
   await SecureStore.deleteItemAsync("accessToken");
   await SecureStore.deleteItemAsync("refreshToken");
+}
+
+export function roundTo2(value) {
+  return Math.round(value * 100) / 100; // garante 2 casas
 }
 
 export const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));

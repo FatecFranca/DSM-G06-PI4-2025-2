@@ -1,12 +1,52 @@
-import React, { useEffect } from "react";
-import { View, Text, StyleSheet, Image, ScrollView, BackHandler } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import React, { useEffect, useState } from "react";
+import { View, Text, StyleSheet, Image, ScrollView, BackHandler, ToastAndroid, Alert } from "react-native";
+
 import * as Progress from "react-native-progress";
-import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+
+import BottomNav from "../components/BottomNav";
+import SettingsModal from "../components/SettingsModal";
+
+import { pegarTokens, salvarTokens, limparTokens, roundTo2 } from "../utils/validacoes";
+import { LINKAPI, PORTAPI } from "../utils/global";
 
 export default function HomeScreen({ navigation }) {
 
+  const [settingsVisible, setSettingsVisible] = useState(false);
+  const [darkTheme, setDarkTheme] = useState(false);
+
+  const imagensMochilas = {
+    'mochilaSolo': require("../assets/mochila-solo.png"),
+    'mochileira': require("../assets/mochileira-sem-bone.png"),
+    'mochileiro': require("../assets/mochileiro.png"),
+  };
+
+  const [nomePessoa, setNomePessoa] = useState("");
+  const [pessoa, setPessoa] = useState("mochilaSolo");
+  const [pesoMaximo, setPesoMaximo] = useState(1);
+  const [pesoEsquerdo, setPesoEsquerdo] = useState(1);
+  const [pesoDireito, setPesoDireito] = useState(1);
+  const [dataUltimaAtualizacao, setDataUltimaAtualizacao] = useState(new Date());
+  const [pesoTotal, setPesoTotal] = useState(1);
+  const [percEsquerdo, setPercEsquerdo] = useState(1);
+  const [percDireito, setPercDireito] = useState(1);
+  const [temMochila, setTemMochila] = useState(true);
+
+  // const pesoTotal = pesoEsquerdo + pesoDireito;
+
+  // const percEsquerdo = pesoEsquerdo / pesoTotal;
+  // const percDireito = pesoDireito / pesoTotal;
+
+  const TEMPO_ATUALIZACAO_MS = 10000;
   useEffect(() => {
+
+    bucarDados();
+
+    // Configura o intervalo para rodar periodicamente
+    const intervalId = setInterval(() => {
+      console.log("Atualizando dados..." + new Date());
+      bucarDados();
+    }, TEMPO_ATUALIZACAO_MS);
+
     const backAction = () => {
       BackHandler.exitApp()
       return true;
@@ -17,98 +57,304 @@ export default function HomeScreen({ navigation }) {
       backAction
     );
 
-    return () => backHandler.remove(); // limpa o listener ao sair da tela
-  }, []);
+    //Função de Limpeza (Cleanup)
+    return () => {
+      // Limpa o listener do botão de voltar
+      backHandler.remove();
+
+      // LIMPA O INTERVALO quando o componente for desmontado
+      clearInterval(intervalId);
+    };
+  }, [navigation]);
+
+  const bucarDados = async () => {
+    try {
+
+      // Timeout 3s
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 6000);
+
+      setDataUltimaAtualizacao(new Date());
+      let tokens = await pegarTokens();
+      let { accessToken, refreshToken } = tokens;
+
+      if (!accessToken || !refreshToken) {
+        console.log("Tokens ausentes");
+        await limparTokens();
+        navigation.reset({
+          index: 0,
+          routes: [{ name: "login" }],
+        });
+        return;
+      }
+
+      // 1. Valida accessToken
+      let response = await fetch(LINKAPI + PORTAPI + "/usuarios/id", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+          signal: controller.signal,
+        },
+      });
+
+      clearTimeout(timeout);
+
+      let data;
+
+      if (!response.ok) {
+
+        // 2. Se expirado, tenta refresh
+        response = await fetch(LINKAPI + PORTAPI + "/token/refresh", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token: "Bearer " + refreshToken }),
+          signal: controller.signal,
+        });
+
+        clearTimeout(timeout);
+
+        if (response.ok) {
+          data = await response.json();
+          await salvarTokens(data.accessToken, refreshToken);
+          console.log("Access Token: " + data.accessToken);
+          console.log("Refresh Token: " + refreshToken);
+          response = await fetch(LINKAPI + PORTAPI + "/usuarios/id", {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${String(data.accessToken)}`,
+            },
+            signal: controller.signal,
+          });
+
+          clearTimeout(timeout);
+
+          if (!response.ok) {
+            console.log("Falha ao obter dados do usuário");
+            const errorData = await response.json();
+            ToastAndroid.show(errorData.error || "Falha ao obter dados do usuário", ToastAndroid.SHORT);
+            await limparTokens();
+            navigation.reset({
+              index: 0,
+              routes: [{ name: "login" }],
+            });
+            return;
+          }
+
+        } else {
+          console.log("Falha ao renovar token");
+          const errorData = await response.json();
+          ToastAndroid.show(errorData.error || "Falha ao renovar acesso", ToastAndroid.SHORT);
+          await limparTokens();
+          navigation.reset({
+            index: 0,
+            routes: [{ name: "login" }],
+          });
+          return;
+        }
+      }
+
+      tokens = await pegarTokens();
+
+      accessToken = tokens.accessToken;
+
+      data = await response.json();
+
+      //console.log("Dados do usuário:", data);
+
+      if (data.usuario.UsuarioPeso) {
+        setPesoMaximo(data.usuario.UsuarioPeso * (data.usuario.UsuarioPesoMaximoPorcentagem / 100));
+      }
+
+      if (data.usuario.UsuarioNome) {
+        // 1. Pega o nome completo
+        const nomeCompleto = data.usuario.UsuarioNome;
+
+        // 2. Divide em um array e pega o primeiro elemento
+        const primeiroNome = nomeCompleto.split(' ')[0];
+
+        // 3. Atualiza o estado com apenas o primeiro nome
+        setNomePessoa(primeiroNome);
+      }
+
+      if (data.usuario.UsuarioSexo === "Feminino") {
+        setPessoa("mochileira");
+      } else if (data.usuario.UsuarioSexo === "Masculino") {
+        setPessoa("mochileiro");
+      }
 
 
-  const pesoMaximo = 50;
-  const pessoa = "mochileiro.png";
-  const pesoEsquerdo = 10;
-  const pesoDireito = 11;
-  const pesoTotal = pesoEsquerdo + pesoDireito;
+      const responseMochila = await fetch(LINKAPI + PORTAPI + "/usuarios-mochilas/mochilaUso", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${String(accessToken)}`,
+          signal: controller.signal,
+        },
+      });
 
-  const percEsquerdo = pesoEsquerdo / pesoTotal;
-  const percDireito = pesoDireito / pesoTotal;
+      clearTimeout(timeout);
 
-  const dataUltimaAtualizacao = new Date("2024-10-10T14:40:00"); // Exemplo fixo
+      if (!responseMochila.ok) {
+        // const dataMochila = await responseMochila.json();
+        // console.log(LINKAPI + PORTAPI + "/usuarios-mochilas/mochilaUso")
+        // console.log("Token:" + accessToken)
+        // console.log("Falha ao obter mochila do usuário: ", responseMochila.error, dataMochila);
+        const errorData = await responseMochila.json();
+        ToastAndroid.show(errorData.error || "Falha ao obter mochila do usuário", ToastAndroid.SHORT);
+        setTemMochila(false);
+        return;
+      }
+
+      const dataMochila = await responseMochila.json();
+
+      if (dataMochila.mochila.MochilaCodigo) {
+        const medicoesMochila = await fetch(LINKAPI + PORTAPI + "/medicoes/atual/" + dataMochila.mochila.MochilaCodigo, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${String(accessToken)}`,
+            signal: controller.signal,
+          },
+        });
+
+        clearTimeout(timeout);
+
+        if (!medicoesMochila.ok) {
+          console.log("Falha ao obter medições");
+          const errorData = await response.json();
+          console.log(errorData)
+          return;
+        }
+
+        const dataMedicao = await medicoesMochila.json();
+
+        setPesoTotal(roundTo2(Number(dataMedicao.esquerda.MedicaoPeso) + Number(dataMedicao.direita.MedicaoPeso)));
+        const pesoTotalConta = roundTo2(Number(dataMedicao.esquerda.MedicaoPeso) + Number(dataMedicao.direita.MedicaoPeso));
+
+        if (dataMedicao.esquerda) {
+          setPesoEsquerdo(Number(dataMedicao.esquerda.MedicaoPeso));
+          setPercEsquerdo(Number(dataMedicao.esquerda.MedicaoPeso) / Number(pesoTotalConta));
+        } else {
+          setPesoEsquerdo(0);
+          setPercEsquerdo(0);
+        }
+
+        if (dataMedicao.direita) {
+          setPesoDireito(Number(dataMedicao.direita.MedicaoPeso));
+          setPercDireito(Number(dataMedicao.direita.MedicaoPeso) / Number(pesoTotalConta));
+        } else {
+          setPesoDireito(0);
+          setPercDireito(0);
+        }
+
+      } else {
+        setTemMochila(false);
+      }
+
+    } catch (error) {
+      if (error.name === "AbortError") {
+        ToastAndroid.show("Servidor demorou a responder", ToastAndroid.SHORT);
+      } else {
+        //ToastAndroid.show("Erro ao conectar no servidor", ToastAndroid.SHORT);
+        Alert.alert('Erro', 'Erro ao conectar no servidor. \nVerifique sua conexão ou tente novamente mais tarde.')
+        navigation.reset({
+          index: 0,
+          routes: [{ name: "login" }],
+        });
+        return;
+      }
+    }
+  };
+
+
 
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         {/* Parte de cima com imagem */}
         <View style={styles.topContainer}>
-          <Text style={{ color: "#00000", fontWeight: "600", fontSize: 25, marginBottom: 30 }}>
-            Peso em Tempo Real
+          <Text style={{ color: "#000", fontWeight: "600", fontSize: 18, marginBottom: 30, textAlign: "center"}}>
+            Olá, {nomePessoa}! {"\n"}Peso em Tempo Real
           </Text>
           <Image
-            source={require("../assets/" + pessoa)}
+            source={imagensMochilas[pessoa]}
             style={styles.image}
             resizeMode="contain"
           />
         </View>
 
         {/* Indicador circular */}
-        <View style={styles.middleContainer}>
-          <Progress.Circle
-            style={styles.circleWrapper}
-            size={180}
-            thickness={20}
-            progress={pesoTotal / pesoMaximo}
-            showsText={true}
-            color={"#f44336"}
-            unfilledColor={"#4CAF50"}
-            borderWidth={0}
-            formatText={() =>
-              `${Math.round((pesoTotal / pesoMaximo) * 100)}% \n ${pesoTotal} Kg`
-            }
-            textStyle={{
-              fontSize: 22,
-              textAlign: "center",
-              fontWeight: "bold",
-            }}
-          />
-
-          {/* Barra personalizada para comparação */}
-          <View style={styles.barraContainer}>
-            <View
-              style={[
-                styles.barraEsquerda,
-                { flex: percEsquerdo },
-              ]}
+        {temMochila ? (
+          <View style={styles.middleContainer}>
+            <Progress.Circle
+              style={styles.circleWrapper}
+              size={180}
+              thickness={20}
+              progress={Number(pesoTotal) / Number(pesoMaximo)}
+              showsText={true}
+              color={"#f44336"}
+              unfilledColor={"#4CAF50"}
+              borderWidth={0}
+              formatText={() =>
+                `${Math.round((Number(pesoTotal) / Number(pesoMaximo)) * 100)}% \n ${Number(pesoTotal)} Kg`
+              }
+              textStyle={{
+                fontSize: 22,
+                textAlign: "center",
+                fontWeight: "bold",
+              }}
             />
-            <View
-              style={[
-                styles.barraDireita,
-                { flex: percDireito },
-              ]}
-            />
-          </View>
 
-          {/* Labels */}
-          <View style={styles.labels}>
-            <Text style={{ color: "#FF7043", fontWeight: "600" }}>
-              Esquerdo: {Math.round(percEsquerdo * 100)}% ({pesoEsquerdo} Kg)
-            </Text>
-            <Text style={{ color: "#4CAF50", fontWeight: "600" }}>
-              Direito: {Math.round(percDireito * 100)}% ({pesoDireito} Kg)
-            </Text>
-          </View>
+            {/* Barra personalizada para comparação */}
+            <View style={styles.barraContainer}>
+              <View style={[styles.barraEsquerda, { flex: percEsquerdo }]} />
+              <View style={[styles.barraDireita, { flex: percDireito }]} />
+            </View>
 
-          <Text style={{ color: "#00000", fontWeight: "600", fontSize: 18, marginTop: 35 }}>
-            Atualizado {dataUltimaAtualizacao.toLocaleString()}
+            {/* Labels */}
+            <View style={styles.labels}>
+              <Text style={{ color: "#FF7043", fontWeight: "600" }}>
+                Esquerdo: {Math.round(Number(percEsquerdo) * 100)}% ({Number(pesoEsquerdo)} Kg)
+              </Text>
+              <Text style={{ color: "#4CAF50", fontWeight: "600" }}>
+                Direito: {Math.round(Number(percDireito) * 100)}% ({Number(pesoDireito)} Kg)
+              </Text>
+            </View>
+
+            <Text style={{ color: "#00000", fontWeight: "600", fontSize: 13, marginTop: 10 }}>
+              Atualizado {dataUltimaAtualizacao.toLocaleString()}
+            </Text>
+
+          </View>
+        ) : (
+          <Text style={{ marginTop: 30, fontSize: 16, color: "gray", textAlign: "center", fontWeight: "600" }}>
+            Nenhuma mochila em uso{"\n\n"}Selecione uma para começar
           </Text>
+        )}
 
-        </View>
       </ScrollView>
+      {/* Modal de Configurações */}
+      <SettingsModal
+        visible={settingsVisible}
+        onClose={() => setSettingsVisible(false)}
+        onToggleTheme={() => setDarkTheme(!darkTheme)}
+        isDarkTheme={darkTheme}
+        onLogout={() => {
+          setSettingsVisible(false);
+          navigation.reset({
+            index: 0,
+            routes: [{ name: "Login" }],
+          });
+        }}
+      />
 
-      {/* Barra inferior */}
-      <View style={styles.bottomNav}>
-        <Ionicons name="person" size={28} color="black" />
-        <MaterialIcons name="backpack" size={28} color="black" />
-        <Ionicons name="home" size={28} color="black" />
-        <Ionicons name="stats-chart" size={28} color="black" />
-        <Ionicons name="settings" size={28} color="black" />
-      </View>
+      {/* Barra inferior reutilizável */}
+      <BottomNav
+        navigation={navigation}
+        onOpenSettings={() => setSettingsVisible(true)} // passa a função
+      />
     </View>
   );
 }
@@ -140,7 +386,7 @@ const styles = StyleSheet.create({
     width: "100%",
   },
   circleWrapper: {
-    marginBottom: 20,
+    marginBottom: 10,
   },
   barraContainer: {
     flexDirection: "row",
@@ -163,13 +409,5 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     width: "90%",
     marginTop: 8,
-  },
-  bottomNav: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    alignItems: "center",
-    paddingVertical: 15,
-    borderTopWidth: 1,
-    borderColor: "#ddd",
   },
 });

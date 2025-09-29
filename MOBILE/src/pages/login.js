@@ -25,8 +25,8 @@ export default function LoginScreen({ navigation }) {
         return;
       }
 
-      const link = LINKAPI + PORTAPI + "/usuarios/login";
-      console.log("Fazendo login em:", link);
+      //const link = LINKAPI + PORTAPI + "/usuarios/login";
+      //console.log("Fazendo login em:", link);
 
       const response = await fetch(LINKAPI + PORTAPI + "/usuarios/login", {
         method: "POST",
@@ -52,7 +52,7 @@ export default function LoginScreen({ navigation }) {
       // Salvar tokens no contexto (e SecureStore)
       await salvarTokens(data.accessToken, data.refreshToken);
 
-      console.log("Access Token:" + data.accessToken + " | Refresh Token:" + data.refreshToken);
+      //console.log("Access Token:" + data.accessToken + " | Refresh Token:" + data.refreshToken);
 
       // Depois do login, redireciona
       navigation.navigate("home"); // Ajuste conforme sua rota principal

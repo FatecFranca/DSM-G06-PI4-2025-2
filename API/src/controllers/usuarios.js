@@ -258,7 +258,7 @@ export async function obterUsuarioLogado(req, res) {
         }
 
         //return res.status(200).json({ ok: true, message: 'Usuário encontrado', usuario });
-        return res.status(200).json(usuario);
+        return res.status(200).json({usuario: usuario, ok: true});
 
     } catch (e) {
         console.error(e);
@@ -358,8 +358,16 @@ export async function alterarUsuario(req, res) {
         }
 
         let senhaHash = '';
-        if (!UsuarioSenha) {
-            return res.status(409).json({ error: "Senha não pode ser nula" });
+        if (!UsuarioSenha || UsuarioSenha.trim() === ""){
+            const senhaExistente = await prisma.usuarios.findFirst({
+                where: {
+                    UsuarioId: UsuarioId
+                },
+                select: {
+                    UsuarioSenha: true
+                }
+            });
+            senhaHash = senhaExistente.UsuarioSenha;
         } else {
             const resultadoSenha = await validarSenha(UsuarioSenha);
 

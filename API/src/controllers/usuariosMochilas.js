@@ -19,7 +19,7 @@ export async function listarUsuariosMochilas(req, res){
 }
 */
 
-// Valiodado (14/09/25) - Obter mochilas do usuário (ativas)
+// Validado (14/09/25) - Obter mochilas do usuário (ativas)
 export async function obterMochilaUsuario(req, res) {
   try {
 
@@ -85,9 +85,87 @@ export async function obterMochilaUsuario(req, res) {
 
     }
 
-    return res.status(200).json({ mochilas });
+    return res.status(200).json({ mochilas: mochilas, ok: true });
 
   } catch (e) {
+    return res.status(500).json({ error: "Erro ao obter mochilas" });
+  } finally {
+    await prisma.$disconnect();
+  }
+}
+
+export async function obterMochilaUsuarioUso(req, res) {
+  try {
+
+    let usuario = null;
+    if (! await verificarToken(req)) {
+      return res.status(401).json({ error: 'Usuário não autenticado' });
+    } else {
+      usuario = await verificarToken(req);
+    }
+
+    const UsuarioId = Number(usuario.UsuarioId);
+
+    if (!usuario.tipo) {
+      return res.status(403).json({ error: "Token iválido para usuário" });
+    }
+
+    if (usuario.tipo !== 'usuario') {
+      return res.status(403).json({ error: "Token iválido para usuário" });
+    }
+
+    if (!UsuarioId || isNaN(UsuarioId)) {
+      return res.status(400).json({ error: "ID do usuário inválido" });
+    }
+
+    const mochilaUsuario = await prisma.usuariosMochilas.findFirst({
+      where: {
+        UsuarioId: UsuarioId,
+        OR: [
+          { UsoStatus: 'Usando' },
+          { UsoStatus: 'Último a Usar' }
+        ]
+      },
+      orderBy: {
+        DataFimUso: 'desc'
+      }
+    });
+
+    if (!mochilaUsuario) {
+      return res.status(404).json({ error: 'Nenhuma mochila encontrada para o usuário', mochila: 'Nenhuma' });
+    } else {
+
+      const m = await prisma.mochilas.findFirst({
+        where: {
+          MochilaId: mochilaUsuario.MochilaId,
+          MochilaStatus: "Ativo"
+        },
+        select: {
+          MochilaCodigo: true,
+          MochilaDescricao: true,
+          MochilaPesoMax: true
+        }
+      });
+
+      if (!m) {
+        return res.status(404).json({ error: 'Nenhuma mochila encontrada para o usuário', mochila: 'Nenhuma' });
+      }
+
+      let mochila = {
+        MochilaCodigo: m.MochilaCodigo,
+        MochilaDescricao: m.MochilaDescricao,
+        MochilaPesoMax: m.MochilaPesoMax,
+        MochilaNome: mochilaUsuario.MochilaNome,
+        UsoStatus: mochilaUsuario.UsoStatus,
+        DataFimUso: mochilaUsuario.DataFimUso,
+        DataInicioUso: mochilaUsuario.DataInicioUso
+      }
+
+      return res.status(200).json({ mochila: mochila, ok: true });
+    }
+
+  } catch (e) {
+    console.error(e);
     return res.status(500).json({ error: "Erro ao obter mochilas" });
   } finally {
     await prisma.$disconnect();
