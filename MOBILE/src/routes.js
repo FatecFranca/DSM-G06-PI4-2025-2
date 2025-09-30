@@ -6,7 +6,8 @@ import Main from "./pages/main";
 import Login from "./pages/login";
 import Register from "./pages/register";
 import Home from "./pages/home";
-import Perfil from "./pages/perfil";
+import Profile from "./pages/profile";
+import Backapack from "./pages/backapack";
 
 const Stack = createStackNavigator();
 
@@ -35,8 +36,13 @@ export default function Routes() {
                     options={{ headerShown: false }} 
                 />
                 <Stack.Screen
-                    name="perfil"
-                    component={Perfil}
+                    name="profile"
+                    component={Profile}
+                    options={{ headerShown: false }} 
+                />
+                <Stack.Screen
+                    name="backapack"
+                    component={Backapack}
                     options={{ headerShown: false }} 
                 />
             </Stack.Navigator>

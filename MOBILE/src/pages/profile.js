@@ -11,7 +11,7 @@ import SettingsModal from "../components/SettingsModal";
 
 import { LINKAPI, PORTAPI } from "../utils/global";
 
-export default function RegisterScreen({ navigation }) {
+export default function ProfileScreen({ navigation }) {
 
     const [settingsVisible, setSettingsVisible] = useState(false);
     const [darkTheme, setDarkTheme] = useState(false);
@@ -263,6 +263,69 @@ export default function RegisterScreen({ navigation }) {
         }
     };
 
+    const handleExcluir = async () => {
+
+        // Senha
+        if (!senha || senha.trim() === "") {
+            ToastAndroid.show("Senha é obrigatória para exclusão", ToastAndroid.SHORT);
+            return;
+        }
+
+        try {
+            // Timeout 3s
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 3000);
+
+            let tokens = await pegarTokens();
+            let { accessToken, refreshToken } = tokens;
+
+            const response = await fetch(LINKAPI + PORTAPI + "/usuarios", {
+                method: "DELETE",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${accessToken}`
+                },
+                body: JSON.stringify({
+                    UsuarioSenha: senha
+                }),
+                signal: controller.signal
+            });
+
+            clearTimeout(timeout);
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                ToastAndroid.show(errorData.error || "Erro ao excluir conta", ToastAndroid.SHORT);
+                return;
+            }
+
+            // const data = await response.json();
+
+            // Remove tokens antes de resetar
+            await limparTokens();
+
+            // Redireciona para login
+            navigation.reset({
+                index: 0,
+                routes: [{ name: "login" }],
+            });
+
+            ToastAndroid.show("Conta excluida com sucesso!", ToastAndroid.SHORT)
+
+            delay(2000);
+
+            return;
+
+        } catch (error) {
+            if (error.name === "AbortError") {
+                return ToastAndroid.show("Servidor demorou a responder", ToastAndroid.SHORT);
+            } else {
+                console.log(error);
+                return ToastAndroid.show("Erro ao conectar no servidor", ToastAndroid.SHORT);
+            }
+        }
+    };
+
     return (
         <View style={styles.container}>
 
@@ -371,7 +434,7 @@ export default function RegisterScreen({ navigation }) {
                         <Text style={styles.buttonText}>CONFIRMAR</Text>
                     </TouchableOpacity>
 
-                    <TouchableOpacity style={styles.buttonDanger} onPress={handleConfirmar}>
+                    <TouchableOpacity style={styles.buttonDanger} onPress={handleExcluir}>
                         <Text style={styles.buttonText}>EXCLUIR CONTA</Text>
                     </TouchableOpacity>
 
@@ -407,7 +470,7 @@ const styles = StyleSheet.create({
         // Estilo do container da Home
         paddingTop: 50,
         flex: 1,
-        backgroundColor: "#B6F5C0", // Usamos branco (igual a Home)
+        backgroundColor: "#b6f5e7ff", // Usamos branco (igual a Home)
     },
     scrollContainer: {
         // Estilo para o conteúdo dentro do ScrollView

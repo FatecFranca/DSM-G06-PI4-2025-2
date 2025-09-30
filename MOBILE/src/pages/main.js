@@ -103,7 +103,9 @@ export default function MainScreen({ navigation }) {
       </View>
 
       {/* Enquanto valida → loading */}
+      {/*}
       <ActivityIndicator size="large" color="#00C200" style={{ marginTop: 20 }} />
+      {*/}
     </View>
   );
 }
@@ -111,7 +113,7 @@ export default function MainScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#B6F5C0",
+    backgroundColor: "#b6f5e7ff",
     justifyContent: "center",
     alignItems: "center",
   },

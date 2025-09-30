@@ -38,10 +38,6 @@ export default function SettingsModal({
 
             clearTimeout(timeout);
 
-            if (!response.ok) {
-                return ToastAndroid.show("Erro ao sair da conta", ToastAndroid.SHORT);
-            }
-
             // Remove tokens antes de resetar
             await limparTokens();
 
@@ -50,9 +46,14 @@ export default function SettingsModal({
                 index: 0,
                 routes: [{ name: "login" }],
             });
+
+            return;
         } catch (error) {
-            console.error("Erro no logout:", error);
-            ToastAndroid.show("Não foi possível sair da conta", ToastAndroid.SHORT);
+            if (error.name === "AbortError") {
+                return ToastAndroid.show("Servidor demorou a responder", ToastAndroid.SHORT);
+            } else {
+                return ToastAndroid.show("Não foi possível sair da conta", ToastAndroid.SHORT);
+            }
         }
     };
 

@@ -44,7 +44,7 @@ export default function HomeScreen({ navigation }) {
 
     // Configura o intervalo para rodar periodicamente
     const intervalId = setInterval(() => {
-      console.log("Atualizando dados..." + new Date());
+      // console.log("Atualizando dados..." + new Date());
       bucarDados();
     }, TEMPO_ATUALIZACAO_MS);
 
@@ -202,8 +202,8 @@ export default function HomeScreen({ navigation }) {
         // console.log(LINKAPI + PORTAPI + "/usuarios-mochilas/mochilaUso")
         // console.log("Token:" + accessToken)
         // console.log("Falha ao obter mochila do usuário: ", responseMochila.error, dataMochila);
-        const errorData = await responseMochila.json();
-        ToastAndroid.show(errorData.error || "Falha ao obter mochila do usuário", ToastAndroid.SHORT);
+        // const errorData = await responseMochila.json();
+        // ToastAndroid.show(errorData.error || "Falha ao obter mochila do usuário", ToastAndroid.SHORT);
         setTemMochila(false);
         return;
       }
@@ -295,11 +295,11 @@ export default function HomeScreen({ navigation }) {
               thickness={20}
               progress={Number(pesoTotal) / Number(pesoMaximo)}
               showsText={true}
-              color={"#f44336"}
-              unfilledColor={"#4CAF50"}
+              color={"#bd1c11ff"}
+              unfilledColor={"#338136ff"}
               borderWidth={0}
               formatText={() =>
-                `${Math.round((Number(pesoTotal) / Number(pesoMaximo)) * 100)}% \n ${Number(pesoTotal)} Kg`
+                ` ${Math.round((Number(pesoTotal) / Number(pesoMaximo)) * 100)}%\n${Number(pesoTotal)} Kg`
               }
               textStyle={{
                 fontSize: 22,
@@ -316,10 +316,10 @@ export default function HomeScreen({ navigation }) {
 
             {/* Labels */}
             <View style={styles.labels}>
-              <Text style={{ color: "#FF7043", fontWeight: "600" }}>
+              <Text style={{ color: "#F46334", fontWeight: "600" }}>
                 Esquerdo: {Math.round(Number(percEsquerdo) * 100)}% ({Number(pesoEsquerdo)} Kg)
               </Text>
-              <Text style={{ color: "#4CAF50", fontWeight: "600" }}>
+              <Text style={{ color: "#36985B", fontWeight: "600" }}>
                 Direito: {Math.round(Number(percDireito) * 100)}% ({Number(pesoDireito)} Kg)
               </Text>
             </View>
@@ -390,7 +390,7 @@ const styles = StyleSheet.create({
   container: {
     paddingTop: 50,
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: "#b6f5e7ff",
   },
   scrollContainer: {
     alignItems: "center",
@@ -414,6 +414,7 @@ const styles = StyleSheet.create({
   },
   circleWrapper: {
     marginBottom: 10,
+    textAlign: "center",
   },
   barraContainer: {
     flexDirection: "row",
@@ -426,10 +427,10 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   barraEsquerda: {
-    backgroundColor: "#FF7043",
+    backgroundColor: "#F46334",
   },
   barraDireita: {
-    backgroundColor: "#4CAF50",
+    backgroundColor: "#36985B",
   },
   labels: {
     flexDirection: "row",

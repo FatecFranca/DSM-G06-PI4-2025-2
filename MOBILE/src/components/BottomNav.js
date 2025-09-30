@@ -6,11 +6,11 @@ import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 export default function BottomNav({ navigation, onOpenSettings  }) {
   return (
     <View style={styles.bottomNav}>
-      <TouchableOpacity onPress={() => navigation.navigate("perfil")}>
+      <TouchableOpacity onPress={() => navigation.navigate("profile")}>
         <Ionicons name="person" size={28} color="black" />
       </TouchableOpacity>
 
-      <TouchableOpacity onPress={() => navigation.navigate("mochilas")}>
+      <TouchableOpacity onPress={() => navigation.navigate("backapack")}>
         <MaterialIcons name="backpack" size={28} color="black" />
       </TouchableOpacity>
 

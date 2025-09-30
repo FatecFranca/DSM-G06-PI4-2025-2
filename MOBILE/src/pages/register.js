@@ -94,19 +94,6 @@ export default function RegisterScreen({ navigation }) {
       return;
     }
 
-    // Se passou em todas validações
-    /*
-    console.log({
-      nome,
-      email,
-      senha,
-      peso,
-      altura,
-      dtNascimento,
-      sexo,
-    });
-    */
-
     try {
       // Timeout 3s
       const controller = new AbortController();
@@ -141,7 +128,7 @@ export default function RegisterScreen({ navigation }) {
       ToastAndroid.show("Cadastro realizado com sucesso!", ToastAndroid.SHORT);
       //console.log("Usuário cadastrado:", data);
 
-      await delay(1500);
+      await delay(1000);
 
       // redireciona para login
       navigation.navigate("login");
@@ -287,7 +274,7 @@ export default function RegisterScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#B6F5C0", justifyContent: "center", alignItems: "center" },
+  container: { flex: 1, backgroundColor: "#b6f5e7ff", justifyContent: "center", alignItems: "center" },
   backButton: { position: "absolute", top: 40, left: 20 },
   box: {
     backgroundColor: "#fff",
