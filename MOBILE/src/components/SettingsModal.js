@@ -64,10 +64,12 @@ export default function SettingsModal({
                     <Text style={styles.title}>Configurações</Text>
 
                     {/* Alternar tema */}
+                    {/*}
                     <View style={styles.option}>
                         <Text style={styles.optionText}>Modo Escuro</Text>
                         <Switch value={isDarkTheme} onValueChange={onToggleTheme} />
                     </View>
+                    {*/}
 
                     {/* Botão de sair */}
                     <TouchableOpacity style={styles.option} onPress={handleLogout}>

@@ -7,7 +7,7 @@ import Login from "./pages/login";
 import Register from "./pages/register";
 import Home from "./pages/home";
 import Profile from "./pages/profile";
-import Backapack from "./pages/backapack";
+import Backpack from "./pages/backpack";
 
 const Stack = createStackNavigator();
 
@@ -41,8 +41,8 @@ export default function Routes() {
                     options={{ headerShown: false }} 
                 />
                 <Stack.Screen
-                    name="backapack"
-                    component={Backapack}
+                    name="backpack"
+                    component={Backpack}
                     options={{ headerShown: false }} 
                 />
             </Stack.Navigator>

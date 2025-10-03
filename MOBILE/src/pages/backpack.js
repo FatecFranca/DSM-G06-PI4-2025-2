@@ -1,75 +1,50 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { View, Text, TouchableOpacity, StyleSheet, ToastAndroid, ScrollView, RefreshControl, ActivityIndicator } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { format } from "date-fns"; // Para formatação de datas
-import { ptBR } from "date-fns/locale"; // Para formatação em português
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
-import { LINKAPI, PORTAPI } from "../utils/global"; // Assumindo que você tem global.js
+import { LINKAPI, PORTAPI } from "../utils/global";
+import { validarTokens, pegarTokens } from "../utils/validacoes";
 
-// Mock de dados para simular a API. REMOVA EM PRODUÇÃO.
-const MOCK_BACKPACKS = [
-  {
-    UsuarioMochilaId: 101,
-    UsuarioMochilaApelido: "Mochila do Dia a Dia",
-    MochilaDescricao: "Mochila padrão para trabalho/estudo",
-    UsuarioMochilaStatus: "Em Uso",
-    UsuarioMochilaDtInicio: new Date(2023, 10, 15, 8, 30), // Mês é 0-indexado (Nov)
-    UsuarioMochilaDtFim: null,
-  },
-  {
-    UsuarioMochilaId: 102,
-    UsuarioMochilaApelido: "Mochila de Viagem",
-    MochilaDescricao: "Para longas viagens e aventuras",
-    UsuarioMochilaStatus: "Último Uso",
-    UsuarioMochilaDtInicio: new Date(2023, 9, 1, 14, 0), // Out
-    UsuarioMochilaDtFim: new Date(2023, 9, 10, 18, 0),
-  },
-  {
-    UsuarioMochilaId: 103,
-    UsuarioMochilaApelido: "Mochila de Academia",
-    MochilaDescricao: "Leve e prática para os treinos",
-    UsuarioMochilaStatus: "Último Uso",
-    UsuarioMochilaDtInicio: new Date(2023, 10, 20, 7, 0), // Nov
-    UsuarioMochilaDtFim: new Date(2023, 10, 20, 9, 0),
-  },
-  {
-    UsuarioMochilaId: 104,
-    UsuarioMochilaApelido: "Mochila Antiga",
-    MochilaDescricao: "Minha primeira mochila",
-    UsuarioMochilaStatus: "Último Uso",
-    UsuarioMochilaDtInicio: new Date(2022, 5, 1, 10, 0), // Jun
-    UsuarioMochilaDtFim: new Date(2022, 5, 30, 17, 0),
-  },
-];
+import BottomNav from "../components/BottomNav";
+import SettingsModal from "../components/SettingsModal";
 
-
-export default function BackapackScreen({ navigation }) {
+export default function BackpackScreen({ navigation }) {
   const [backpacks, setBackpacks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
+  const [settingsVisible, setSettingsVisible] = useState(false);
+  const [darkTheme, setDarkTheme] = useState(false);
+
   // Função para buscar as mochilas do usuário
   const fetchUserBackpacks = useCallback(async () => {
-    const {accessToken} = await pegarTokens();
-
-    if (!accessToken || accessToken === "YOUR_ACCESS_TOKEN_HERE") {
-      ToastAndroid.show("Token de acesso não encontrado. Faça login novamente.", ToastAndroid.LONG);
-      // navigation.navigate("Login"); // Redirecione para o login se não tiver token
-      setLoading(false);
-      setRefreshing(false);
-      return;
-    }
-
     try {
+
+      const resposta = await validarTokens(0, navigation);
+
+      if (resposta === 'true') {
+      } else if (resposta === 'false') {
+        return;
+      } else {
+        return ToastAndroid.show(resposta, ToastAndroid.SHORT);
+      }
+
+      let tokens = await pegarTokens();
+      let { accessToken, refreshToken } = tokens;
+
       // Timeout 10s
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 10000);
 
-      const response = await fetch(`${LINKAPI}${PORTAPI}/mochilas/usuario`, {
+      //console.log(accessToken);
+
+      const response = await fetch(`${LINKAPI}${PORTAPI}/usuarios-mochilas/usuario/`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${accessToken}`, // Enviar o token JWT
+          "Authorization": `Bearer ${accessToken}`,
         },
         signal: controller.signal,
       });
@@ -79,41 +54,48 @@ export default function BackapackScreen({ navigation }) {
       if (!response.ok) {
         const errorData = await response.json();
         ToastAndroid.show(errorData.error || "Erro ao buscar mochilas", ToastAndroid.SHORT);
-        setBackpacks([]); // Limpa as mochilas se houver erro
+        setBackpacks([]);
         return;
       }
 
       const data = await response.json();
 
+      const backpacksData = Array.isArray(data.mochilas) ? data.mochilas : [];
+      //console.log(backpacksData);
+
       // Mapeia e formata as datas antes de armazenar
-      const formattedData = data.map(item => ({
+      const formattedData = backpacksData.map(item => ({
         ...item,
-        UsuarioMochilaDtInicio: item.UsuarioMochilaDtInicio ? new Date(item.UsuarioMochilaDtInicio) : null,
-        UsuarioMochilaDtFim: item.UsuarioMochilaDtFim ? new Date(item.UsuarioMochilaDtFim) : null,
+        DataInicioUso: item.DataInicioUso ? new Date(item.DataInicioUso) : null,
+        DataFimUso: item.DataFimUso ? new Date(item.DataFimUso) : null,
       }));
 
       // Ordena: mochila em uso primeiro, depois as de último uso por data (mais recente primeiro)
       formattedData.sort((a, b) => {
-        if (a.UsuarioMochilaStatus === "Em Uso" && b.UsuarioMochilaStatus !== "Em Uso") return -1;
-        if (a.UsuarioMochilaStatus !== "Em Uso" && b.UsuarioMochilaStatus === "Em Uso") return 1;
-        
-        // Se ambos são "Último Uso", ordena pela data de fim (ou início, se fim for nulo)
-        if (a.UsuarioMochilaStatus === "Último Uso" && b.UsuarioMochilaStatus === "Último Uso") {
-          const dateA = a.UsuarioMochilaDtFim || a.UsuarioMochilaDtInicio;
-          const dateB = b.UsuarioMochilaDtFim || b.UsuarioMochilaDtInicio;
+        if (a.UsoStatus === "Usando" && b.UsoStatus !== "Usando") return -1;
+        if (a.UsoStatus !== "Usando" && b.UsoStatus === "Usando") return 1;
+
+        // Se ambos são "Último a Usar", ordena pela data de fim (ou início, se fim for nulo)
+        if (a.UsoStatus === "Último a Usar" && b.UsoStatus === "Último a Usar") {
+          const dateA = a.DataFimUso || a.DataInicioUso;
+          const dateB = b.DataFimUso || b.DataInicioUso;
           return dateB.getTime() - dateA.getTime(); // Mais recente primeiro
         }
-        return 0; // Mantém a ordem se os status forem iguais e não forem "Último Uso"
+        return 0; // Mantém a ordem se os status forem iguais e não forem "Último a Usar"
       });
 
       setBackpacks(formattedData);
     } catch (error) {
       if (error.name === "AbortError") {
         ToastAndroid.show("Servidor demorou a responder ao buscar mochilas", ToastAndroid.LONG);
+        setBackpacks([]);
+        return;
       } else {
-        ToastAndroid.show("Erro ao conectar no servidor: " + error.message, ToastAndroid.LONG);
+        console.log(error);
+        ToastAndroid.show("Erro ao conectar no servidor", ToastAndroid.LONG);
+        setBackpacks([]);
+        return;
       }
-      setBackpacks([]);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -136,19 +118,29 @@ export default function BackapackScreen({ navigation }) {
   };
 
   // Função para iniciar o uso de uma mochila
-  const handleStartUsing = async (backpackId) => {
-    // --- Substitua com a lógica para obter seu token de acesso real ---
-    const accessToken = "YOUR_ACCESS_TOKEN_HERE"; // COLOQUE SEU TOKEN AQUI!
-
+  const handleStartUsing = async (backpackCode) => {
     try {
-      // Endpoint para iniciar uso da mochila (ex: PUT /usuarios-mochilas/:id/usar)
-      const response = await fetch(`${LINKAPI}${PORTAPI}/usuarios-mochilas/${backpackId}/usar`, {
-        method: "PUT",
+
+      const resposta = await validarTokens(0, navigation);
+
+      if (resposta === 'true') {
+      } else if (resposta === 'false') {
+        return;
+      } else {
+        return ToastAndroid.show(resposta, ToastAndroid.SHORT);
+      }
+
+      let tokens = await pegarTokens();
+      let { accessToken, refreshToken } = tokens;
+
+      // Endpoint para iniciar uso da mochila
+      const response = await fetch(`${LINKAPI}${PORTAPI}/usuarios-mochilas/assumir/`, {
+        method: "POST",
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${accessToken}`,
         },
-        // body: JSON.stringify({ /* talvez algum dado adicional seja necessário */ }),
+        body: JSON.stringify({ MochilaCodigo: backpackCode }),
       });
 
       if (!response.ok) {
@@ -157,27 +149,40 @@ export default function BackapackScreen({ navigation }) {
         return;
       }
 
-      ToastAndroid.show("Mochila agora em uso!", ToastAndroid.SHORT);
-      fetchUserBackpacks(); // Recarrega a lista para atualizar o estado
+      ToastAndroid.show("Iniciado uso da Mochila", ToastAndroid.SHORT);
+      fetchUserBackpacks();
+
     } catch (error) {
-      ToastAndroid.show("Erro ao conectar no servidor", ToastAndroid.SHORT);
+      ToastAndroid.show("Erro ao conectar no servidor, tente novamente", ToastAndroid.SHORT);
+      await validarTokens(0, navigation);
+      return;
     }
   };
 
   // Função para parar o uso de uma mochila
-  const handleStopUsing = async (backpackId) => {
-    // --- Substitua com a lógica para obter seu token de acesso real ---
-    const accessToken = "YOUR_ACCESS_TOKEN_HERE"; // COLOQUE SEU TOKEN AQUI!
-
+  const handleStopUsing = async (backpackCode) => {
     try {
-      // Endpoint para parar uso da mochila (ex: PUT /usuarios-mochilas/:id/parar)
-      const response = await fetch(`${LINKAPI}${PORTAPI}/usuarios-mochilas/${backpackId}/parar`, {
-        method: "PUT",
+
+      const resposta = await validarTokens(0, navigation);
+
+      if (resposta === 'true') {
+      } else if (resposta === 'false') {
+        return;
+      } else {
+        return ToastAndroid.show(resposta, ToastAndroid.SHORT);
+      }
+
+      let tokens = await pegarTokens();
+      let { accessToken, refreshToken } = tokens;
+
+      // Endpoint para parar uso da mochila
+      const response = await fetch(`${LINKAPI}${PORTAPI}/usuarios-mochilas/encerrarUsoApp/`, {
+        method: "POST",
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${accessToken}`,
         },
-        // body: JSON.stringify({ /* talvez algum dado adicional seja necessário */ }),
+        body: JSON.stringify({ MochilaCodigo: backpackCode }),
       });
 
       if (!response.ok) {
@@ -186,10 +191,13 @@ export default function BackapackScreen({ navigation }) {
         return;
       }
 
-      ToastAndroid.show("Mochila não está mais em uso.", ToastAndroid.SHORT);
-      fetchUserBackpacks(); // Recarrega a lista para atualizar o estado
+      ToastAndroid.show("Finalizado uso da Mochila", ToastAndroid.SHORT);
+      fetchUserBackpacks();
+
     } catch (error) {
-      ToastAndroid.show("Erro ao conectar no servidor", ToastAndroid.SHORT);
+      ToastAndroid.show("Erro ao conectar no servidor, tente novamente", ToastAndroid.SHORT);
+      await validarTokens(0, navigation);
+      return;
     }
   };
 
@@ -197,26 +205,13 @@ export default function BackapackScreen({ navigation }) {
     return (
       <View style={[styles.container, styles.loadingContainer]}>
         <ActivityIndicator size="large" color="#0000ff" />
-        <Text style={{ marginTop: 10 }}>Carregando mochilas...</Text>
+        <Text style={{ marginTop: 10, alignItems: "center", textAlign: "center"}}>Carregando mochilas...</Text>
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      {/* Botão Voltar (se necessário, aqui é para a stack de navegação) */}
-      {/*}
-      <TouchableOpacity
-        style={styles.backButton}
-        onPress={() => {
-          if (navigation.canGoBack()) {
-            navigation.goBack();
-          }
-        }}
-      >
-        <Ionicons name="arrow-back" size={28} color="#3A3A3A" />
-      </TouchableOpacity>
-      {*/}
 
       <Text style={styles.title}>Minhas Mochilas</Text>
 
@@ -230,49 +225,50 @@ export default function BackapackScreen({ navigation }) {
         ) : (
           backpacks.map((backpack) => (
             <View
-              key={backpack.UsuarioMochilaId}
+              key={backpack.MochilaCodigo}
               style={[
                 styles.backpackCard,
-                backpack.UsuarioMochilaStatus === "Em Uso" ? styles.inUseCard : styles.lastUsedCard,
+                backpack.UsoStatus === "Usando" ? styles.inUseCard : styles.lastUsedCard,
               ]}
             >
               <View style={styles.cardHeader}>
                 <Text style={styles.backpackName}>
-                  {backpack.UsuarioMochilaApelido}
-                  <Text style={styles.statusLabel}> ({backpack.MochilaDescricao})</Text>
+                  {backpack.MochilaNome}
                 </Text>
                 <Text
                   style={[
                     styles.backpackStatus,
-                    backpack.UsuarioMochilaStatus === "Em Uso"
-                      ? { color: "#28a745" } // Verde para "Em Uso"
-                      : { color: "#6c757d" }, // Cinza para "Último Uso"
+                    backpack.UsoStatus === "Usando"
+                      ? { color: "#28a745" } // Verde para "Usando"
+                      : { color: "#6c757d" }, // Cinza para "Último a Usar"
                   ]}
                 >
-                  {backpack.UsuarioMochilaStatus}
+                  {backpack.UsoStatus}
                 </Text>
               </View>
 
-              <Text style={styles.backpackDescription}>{backpack.MochilaDescricao}</Text>
-              
+              <Text style={styles.statusLabel}>Código: ({backpack.MochilaCodigo})</Text>
+
+              <Text style={styles.backpackDescription}>Descrição: {backpack.MochilaDescricao}</Text>
+
               <Text style={styles.dateText}>
-                {backpack.UsuarioMochilaStatus === "Em Uso"
-                  ? `Data Início: ${formatDate(backpack.UsuarioMochilaDtInicio)}`
-                  : `Último Uso: ${formatDate(backpack.UsuarioMochilaDtFim || backpack.UsuarioMochilaDtInicio)}`}
+                {backpack.UsoStatus === "Usando"
+                  ? `Data Início: ${formatDate(backpack.DataInicioUso)}`
+                  : `Último Uso: ${formatDate(backpack.DataFimUso || backpack.DataInicioUso)}`}
               </Text>
 
               <View style={styles.buttonContainer}>
-                {backpack.UsuarioMochilaStatus === "Em Uso" ? (
+                {backpack.UsoStatus === "Usando" ? (
                   <TouchableOpacity
                     style={[styles.actionButton, styles.stopUsingButton]}
-                    onPress={() => handleStopUsing(backpack.UsuarioMochilaId)}
+                    onPress={() => handleStopUsing(backpack.MochilaCodigo)}
                   >
                     <Text style={styles.actionButtonText}>Parar de Usar</Text>
                   </TouchableOpacity>
                 ) : (
                   <TouchableOpacity
                     style={[styles.actionButton, styles.startUsingButton]}
-                    onPress={() => handleStartUsing(backpack.UsuarioMochilaId)}
+                    onPress={() => handleStartUsing(backpack.MochilaCodigo)}
                   >
                     <Text style={styles.actionButtonText}>Começar a Usar</Text>
                   </TouchableOpacity>
@@ -283,10 +279,26 @@ export default function BackapackScreen({ navigation }) {
         )}
       </ScrollView>
 
-      {/* Navegação Inferior (Nav Bar) - Opcional, dependendo da sua arquitetura */}
-      {/* <View style={styles.navBar}>
-        <Text style={styles.navBarText}>Nav Bar</Text>
-      </View> */}
+      {/* Modal de Configurações */}
+      <SettingsModal
+        visible={settingsVisible}
+        onClose={() => setSettingsVisible(false)}
+        onToggleTheme={() => setDarkTheme(!darkTheme)}
+        isDarkTheme={darkTheme}
+        onLogout={() => {
+          setSettingsVisible(false);
+          navigation.reset({
+            index: 0,
+            routes: [{ name: "Login" }],
+          });
+        }}
+      />
+
+      {/* Barra inferior reutilizável */}
+      <BottomNav
+        navigation={navigation}
+        onOpenSettings={() => setSettingsVisible(true)} // passa a função
+      />
     </View>
   );
 }
@@ -295,8 +307,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#e0f7fa", // Cor de fundo semelhante ao protótipo
-    alignItems: "center",
-    paddingTop: 60, // Espaço para o botão voltar e título
+    paddingTop: 50, // Espaço para o botão voltar e título
   },
   loadingContainer: {
     justifyContent: 'center',
@@ -312,6 +323,8 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#3A3A3A",
     marginBottom: 20,
+    alignItems: "center",
+    textAlign: "center",
   },
   scrollView: {
     width: "100%",
@@ -339,12 +352,12 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   inUseCard: {
-    backgroundColor: "#d4edda", // Verde claro para "Em Uso"
+    backgroundColor: "#d4edda", // Verde claro para "Usando"
     borderWidth: 2,
     borderColor: "#28a745", // Borda verde
   },
   lastUsedCard: {
-    backgroundColor: "#e2e3e5", // Cinza claro para "Último Uso"
+    backgroundColor: "#e2e3e5", // Cinza claro para "Último a Usar"
     borderWidth: 1,
     borderColor: "#adb5bd", // Borda cinza
   },
@@ -362,6 +375,7 @@ const styles = StyleSheet.create({
   },
   statusLabel: {
     fontSize: 14,
+    marginBottom: 8,
     fontWeight: 'normal', // Apelido normal, descrição em negrito
     color: '#555',
   },

@@ -274,7 +274,7 @@ export default function RegisterScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#b6f5e7ff", justifyContent: "center", alignItems: "center" },
+  container: { flex: 1, backgroundColor: "#e0f7fa", justifyContent: "center", alignItems: "center" },
   backButton: { position: "absolute", top: 40, left: 20 },
   box: {
     backgroundColor: "#fff",

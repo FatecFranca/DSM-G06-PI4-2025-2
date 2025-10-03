@@ -10,7 +10,7 @@ export default function BottomNav({ navigation, onOpenSettings  }) {
         <Ionicons name="person" size={28} color="black" />
       </TouchableOpacity>
 
-      <TouchableOpacity onPress={() => navigation.navigate("backapack")}>
+      <TouchableOpacity onPress={() => navigation.navigate("backpack")}>
         <MaterialIcons name="backpack" size={28} color="black" />
       </TouchableOpacity>
 

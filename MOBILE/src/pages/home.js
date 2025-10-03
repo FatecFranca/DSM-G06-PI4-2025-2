@@ -1,18 +1,20 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, StyleSheet, Image, ScrollView, BackHandler, ToastAndroid, Alert } from "react-native";
+import { View, Text, StyleSheet, Image, ScrollView, BackHandler, ToastAndroid, Alert, ActivityIndicator } from "react-native";
 
 import * as Progress from "react-native-progress";
 
 import BottomNav from "../components/BottomNav";
 import SettingsModal from "../components/SettingsModal";
 
-import { pegarTokens, salvarTokens, limparTokens, roundTo2, delay } from "../utils/validacoes";
+import { pegarTokens, salvarTokens, limparTokens, roundTo2, delay, obterDadosUsuario } from "../utils/validacoes";
 import { LINKAPI, PORTAPI } from "../utils/global";
 
 export default function HomeScreen({ navigation }) {
 
   const [settingsVisible, setSettingsVisible] = useState(false);
   const [darkTheme, setDarkTheme] = useState(false);
+
+  const [loading, setLoading] = useState(true);
 
   const imagensMochilas = {
     'mochilaSolo': require("../assets/mochila-solo.png"),
@@ -32,12 +34,7 @@ export default function HomeScreen({ navigation }) {
   const [temMochila, setTemMochila] = useState(true);
   const [mostrarTela, setMostrarTela] = useState(false);
 
-  // const pesoTotal = pesoEsquerdo + pesoDireito;
-
-  // const percEsquerdo = pesoEsquerdo / pesoTotal;
-  // const percDireito = pesoDireito / pesoTotal;
-
-  const TEMPO_ATUALIZACAO_MS = 10000;
+  const TEMPO_ATUALIZACAO_MS = 20000;
   useEffect(() => {
 
     bucarDados();
@@ -71,11 +68,9 @@ export default function HomeScreen({ navigation }) {
   const bucarDados = async () => {
     try {
 
-      // Timeout 3s
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 6000);
-
       setDataUltimaAtualizacao(new Date());
+
+      /*
       let tokens = await pegarTokens();
       let { accessToken, refreshToken } = tokens;
 
@@ -163,6 +158,16 @@ export default function HomeScreen({ navigation }) {
       data = await response.json();
 
       //console.log("Dados do usuário:", data);
+      */
+
+      const data = await obterDadosUsuario(navigation);
+
+      if (data === 'false') {
+        return;
+      }
+
+      let tokens = await pegarTokens();
+      let { accessToken, refreshToken } = tokens;
 
       if (data.usuario.UsuarioPeso) {
         setPesoMaximo(data.usuario.UsuarioPeso * (data.usuario.UsuarioPesoMaximoPorcentagem / 100));
@@ -185,6 +190,9 @@ export default function HomeScreen({ navigation }) {
         setPessoa("mochileiro");
       }
 
+      // Timeout 3s
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 6000);
 
       const responseMochila = await fetch(LINKAPI + PORTAPI + "/usuarios-mochilas/mochilaUso", {
         method: "GET",
@@ -198,12 +206,6 @@ export default function HomeScreen({ navigation }) {
       clearTimeout(timeout);
 
       if (!responseMochila.ok) {
-        // const dataMochila = await responseMochila.json();
-        // console.log(LINKAPI + PORTAPI + "/usuarios-mochilas/mochilaUso")
-        // console.log("Token:" + accessToken)
-        // console.log("Falha ao obter mochila do usuário: ", responseMochila.error, dataMochila);
-        // const errorData = await responseMochila.json();
-        // ToastAndroid.show(errorData.error || "Falha ao obter mochila do usuário", ToastAndroid.SHORT);
         setTemMochila(false);
         return;
       }
@@ -260,6 +262,7 @@ export default function HomeScreen({ navigation }) {
       } else {
         //ToastAndroid.show("Erro ao conectar no servidor", ToastAndroid.SHORT);
         //Alert.alert('Erro', 'Erro ao conectar no servidor. \nVerifique sua conexão ou tente novamente mais tarde.')
+        console.log(error);
         navigation.reset({
           index: 0,
           routes: [{ name: "main" }],
@@ -267,9 +270,19 @@ export default function HomeScreen({ navigation }) {
         return;
       }
     } finally {
+      setLoading(false);
       setMostrarTela(true);
     }
   };
+
+  if (loading) {
+    return (
+      <View style={[styles.container, styles.loadingContainer]}>
+        <ActivityIndicator size="large" color="#0000ff" />
+        <Text style={{ marginTop: 10, alignItems: "center", textAlign: "center" }}>Carregando dados...</Text>
+      </View>
+    );
+  }
 
   return mostrarTela ? (
     <View style={styles.container}>
@@ -360,7 +373,7 @@ export default function HomeScreen({ navigation }) {
   ) : (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContainer}>
-        
+
       </ScrollView>
       {/* Modal de Configurações */}
       <SettingsModal
@@ -390,7 +403,7 @@ const styles = StyleSheet.create({
   container: {
     paddingTop: 50,
     flex: 1,
-    backgroundColor: "#b6f5e7ff",
+    backgroundColor: "#e0f7fa",
   },
   scrollContainer: {
     alignItems: "center",

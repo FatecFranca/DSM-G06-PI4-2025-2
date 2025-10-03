@@ -1,4 +1,6 @@
 import * as SecureStore from "expo-secure-store";
+import { LINKAPI, PORTAPI } from "./global";
+//import { console } from "inspector";
 
 export function validarEmail(email) {
   const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -97,6 +99,233 @@ export async function pegarTokens() {
 export async function limparTokens() {
   await SecureStore.deleteItemAsync("accessToken");
   await SecureStore.deleteItemAsync("refreshToken");
+}
+
+// Validar tokens
+export async function validarTokens(tentativas, navigation) {
+  try {
+
+    // Timeout 3s
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 3000);
+
+    console.log('Tentativas: ' + tentativas);
+    if (tentativas > 5) {
+      console.log('Tentativas excedidas');
+      await limparTokens();
+      navigation.reset({
+        index: 0,
+        routes: [{ name: "login" }],
+      });
+      return 'false';
+    }
+
+    const tokens = await pegarTokens();
+    const { accessToken, refreshToken } = tokens;
+
+    if (!accessToken || !refreshToken) {
+      console.log('Sem tokens');
+      await limparTokens();
+      navigation.reset({
+        index: 0,
+        routes: [{ name: "login" }],
+      });
+      return 'false';
+    }
+
+    // 1. Valida accessToken
+    let response = await fetch(LINKAPI + PORTAPI + "/token/validarToken", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+        signal: controller.signal,
+      },
+    });
+
+    clearTimeout(timeout);
+
+    if (response.ok) {
+      console.log('Token válido');
+      return 'true';
+    }
+
+    // 2. Se expirado, tenta refresh
+    if (refreshToken) {
+      response = await fetch(LINKAPI + PORTAPI + "/token/refresh", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: "Bearer " + refreshToken }),
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeout);
+
+      if (response.ok) {
+        const data = await response.json();
+        await salvarTokens(data.accessToken, refreshToken);
+        console.log('Token renovado');
+        return 'true';
+      } else {
+
+        let data;
+        try {
+          console.log('Validando resposta');
+          data = await response.json();
+        } catch {
+          console.log('Resposta inválida');
+          data = {};
+        }
+
+        if (data.error && data.error === 'Usuário não autenticado') {
+          console.log('Usuário não autenticado');
+          await limparTokens();
+          navigation.reset({
+            index: 0,
+            routes: [{ name: "login" }],
+          });
+          return 'false';
+        }
+        //console.log('Inciando nova tentiva');
+        return await validarTokens(tentativas + 1, navigation);
+      }
+    }
+
+    // 3. Se falhou
+    console.log('Token Inválido');
+    await limparTokens();
+    navigation.reset({
+      index: 0,
+      routes: [{ name: "login" }],
+    });
+    return 'false';
+
+  } catch (error) {
+    if (error.name === "AbortError") {
+      console.log('Servidor demorou a responder');
+      return await validarTokens(tentativas + 1, navigation);
+    } else {
+      console.log('Erro ao conectar no servidor');
+      return await validarTokens(tentativas + 1, navigation);
+    }
+  }
+}
+
+export async function obterDadosUsuario(navigation) {
+  try {
+
+    // Timeout 3s
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 3000);
+
+    let tokens = await pegarTokens();
+    let { accessToken, refreshToken } = tokens;
+
+    if (!accessToken || !refreshToken) {
+      console.log("Tokens ausentes");
+      await limparTokens();
+      navigation.reset({
+        index: 0,
+        routes: [{ name: "login" }],
+      });
+      return 'false';
+    }
+
+    // 1. Tentando obter os dados
+    let response = await fetch(LINKAPI + PORTAPI + "/usuarios/id", {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+        signal: controller.signal,
+      },
+    });
+
+    clearTimeout(timeout);
+
+    let data;
+
+    if (!response.ok) {
+
+      // 2. Se expirado, tenta refresh na função
+      response = await validarTokens(0, navigation);
+
+      if (response === 'false') {
+        return 'false';
+      } else if (response === 'true') {
+        data = await obterDadosUsuario(navigation);
+      }
+
+      /*
+      response = await fetch(LINKAPI + PORTAPI + "/token/refresh", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: "Bearer " + refreshToken }),
+      });
+
+      if (response.ok) {
+        data = await response.json();
+        await salvarTokens(data.accessToken, refreshToken);
+        console.log("Access Token: " + data.accessToken);
+        console.log("Refresh Token: " + refreshToken);
+        response = await fetch(LINKAPI + PORTAPI + "/usuarios/id", {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${String(data.accessToken)}`,
+          },
+        });
+
+        if (!response.ok) {
+          console.log("Falha ao obter dados do usuário");
+          await limparTokens();
+          navigation.reset({
+            index: 0,
+            routes: [{ name: "login" }],
+          });
+          return;
+        }
+
+      } else {
+        console.log("Falha ao renovar token");
+        await limparTokens();
+        navigation.reset({
+          index: 0,
+          routes: [{ name: "login" }],
+        });
+        return;
+      }
+      */
+    } else {
+      data = await response.json();
+    }
+
+    tokens = await pegarTokens();
+
+    accessToken = tokens.accessToken;
+
+    return data;
+    /*
+    const pesoFor = data.usuario.UsuarioPeso.replace('.', ',');
+    const alturaFor = data.usuario.UsuarioAltura.replace('.', ',');
+
+    setAltura(alturaFor);
+    setPeso(pesoFor);
+    setDtNascimento(new Date(data.usuario.UsuarioDtNascimento));
+    setEmail(data.usuario.UsuarioEmail);
+    setNome(data.usuario.UsuarioNome);
+    setSexo(data.usuario.UsuarioSexo);
+    */
+
+  } catch {
+    if (error.name === "AbortError") {
+      console.log('Servidor demorou a responder (ObD)');
+      return await validarTokens(0, navigation);
+    } else {
+      console.log('Erro ao conectar no servidor (ObD)');
+      return await validarTokens(0, navigation);
+    }
+  }
 }
 
 export function roundTo2(value) {

@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, Image, ActivityIndicator, ToastAndroid, BackHan
 import { delay } from "../utils/validacoes";
 //import { LINKAPI, PORTAPI } from "@env";
 import { LINKAPI, PORTAPI } from "../utils/global";
-import { pegarTokens, salvarTokens, limparTokens } from "../utils/validacoes";
+import { pegarTokens, salvarTokens, limparTokens, validarTokens } from "../utils/validacoes";
 
 export default function MainScreen({ navigation }) {
 
@@ -30,13 +30,22 @@ export default function MainScreen({ navigation }) {
 
       await delay(1000); // Simula loading
 
+      const resposta = await validarTokens(0, navigation);
+
+      if (resposta === 'true') {
+        navigation.replace("home");
+        return;
+      } else if (resposta === 'false') {
+        //navigation.replace("login");
+        return;
+      }else{
+        return ToastAndroid.show(resposta, ToastAndroid.SHORT);
+      }
+
+      // Substituida pela função reutilizavel acima
+      /*
       const tokens = await pegarTokens();
       const { accessToken, refreshToken } = tokens;
-
-      //console.log("Access Token salvo:" + accessToken);
-      //console.log("Refresh Token salvo:" + refreshToken);
-      //console.log("Link API:" + LINKAPI + PORTAPI);
-      //console.log("tkens:", tokens);
 
       if (!accessToken) {
         navigation.replace("login");
@@ -78,6 +87,7 @@ export default function MainScreen({ navigation }) {
       ToastAndroid.show("Sessão expirada, faça login novamente", ToastAndroid.SHORT);
       delay(2000);
       navigation.replace("login");
+      */
     } catch (error) {
       if (error.name === "AbortError") {
         return ToastAndroid.show("Servidor demorou a responder", ToastAndroid.SHORT);

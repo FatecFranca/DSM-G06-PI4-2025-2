@@ -4,7 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Picker } from "@react-native-picker/picker";
 import DateTimePicker from "@react-native-community/datetimepicker";
 
-import { validarEmail, validarSenha, diferencaEntreDatas, delay, pegarTokens, salvarTokens, limparTokens, } from "../utils/validacoes";
+import { validarEmail, validarSenha, diferencaEntreDatas, delay, pegarTokens, salvarTokens, limparTokens, obterDadosUsuario } from "../utils/validacoes";
 
 import BottomNav from "../components/BottomNav";
 import SettingsModal from "../components/SettingsModal";
@@ -33,6 +33,7 @@ export default function ProfileScreen({ navigation }) {
     const bucarDados = async () => {
         try {
 
+            /*
             // Timeout 3s
             const controller = new AbortController();
             const timeout = setTimeout(() => controller.abort(), 3000);
@@ -122,6 +123,23 @@ export default function ProfileScreen({ navigation }) {
             setEmail(data.usuario.UsuarioEmail);
             setNome(data.usuario.UsuarioNome);
             setSexo(data.usuario.UsuarioSexo);
+            */
+
+            const response = await obterDadosUsuario(navigation);
+
+            if (response === 'false') {
+                return;
+            }
+
+            const pesoFor = response.usuario.UsuarioPeso.replace('.', ',');
+            const alturaFor = response.usuario.UsuarioAltura.replace('.', ',');
+
+            setAltura(alturaFor);
+            setPeso(pesoFor);
+            setDtNascimento(new Date(response.usuario.UsuarioDtNascimento));
+            setEmail(response.usuario.UsuarioEmail);
+            setNome(response.usuario.UsuarioNome);
+            setSexo(response.usuario.UsuarioSexo);
 
         } catch {
             if (error.name === "AbortError") {
@@ -129,10 +147,9 @@ export default function ProfileScreen({ navigation }) {
             } else {
                 ToastAndroid.show("Erro ao conectar no servidor", ToastAndroid.SHORT);
                 console.log(error);
-                await limparTokens();
                 navigation.reset({
                     index: 0,
-                    routes: [{ name: "login" }],
+                    routes: [{ name: "main" }],
                 });
                 return;
             }
@@ -470,7 +487,7 @@ const styles = StyleSheet.create({
         // Estilo do container da Home
         paddingTop: 50,
         flex: 1,
-        backgroundColor: "#b6f5e7ff", // Usamos branco (igual a Home)
+        backgroundColor: "#e0f7fa", // Usamos branco (igual a Home)
     },
     scrollContainer: {
         // Estilo para o conteúdo dentro do ScrollView
