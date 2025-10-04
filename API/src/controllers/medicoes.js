@@ -76,6 +76,10 @@ export async function criarMedicao(req, res) {
       dadosMochila = await verificarToken(req);
     }
 
+    if (dadosMochila.tipo !== 'iot'){
+      return res.status(403).json({ error: "Token iválido para mochila" });
+    }
+
     let MochilaId = Number(dadosMochila.MochilaId);
 
     const mochila = await prisma.mochilas.findUnique({ where: { MochilaId: MochilaId } });

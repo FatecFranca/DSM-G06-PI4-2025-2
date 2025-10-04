@@ -335,7 +335,7 @@ export async function assumirUsoMochila(req, res) {
       WHERE "UsuarioId" = ${UsuarioId} AND "MochilaId" = ${mochila.MochilaId}
         AND NOT EXISTS (
           SELECT 1 FROM "UsuariosMochilas"
-          WHERE "MochilaId" = ${mochila.MochilaId} AND "DataFimUso" IS NULL
+          WHERE "MochilaId" = ${mochila.MochilaId} AND "UsoStatus" = 'Usando'
           AND NOT ("UsuarioId" = ${UsuarioId})
         )
       RETURNING "UsuarioId","MochilaId","DataInicioUso";

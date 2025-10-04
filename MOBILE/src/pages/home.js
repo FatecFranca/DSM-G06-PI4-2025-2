@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { use, useEffect, useState } from "react";
 import { View, Text, StyleSheet, Image, ScrollView, BackHandler, ToastAndroid, Alert, ActivityIndicator } from "react-native";
 
 import * as Progress from "react-native-progress";
@@ -8,6 +8,7 @@ import SettingsModal from "../components/SettingsModal";
 
 import { pegarTokens, salvarTokens, limparTokens, roundTo2, delay, obterDadosUsuario } from "../utils/validacoes";
 import { LINKAPI, PORTAPI } from "../utils/global";
+import { isExists } from "date-fns";
 
 export default function HomeScreen({ navigation }) {
 
@@ -33,6 +34,7 @@ export default function HomeScreen({ navigation }) {
   const [percDireito, setPercDireito] = useState(1);
   const [temMochila, setTemMochila] = useState(true);
   const [mostrarTela, setMostrarTela] = useState(false);
+  const [corTextoCirculo, setCorTextoCirculo] = useState('');
 
   const TEMPO_ATUALIZACAO_MS = 20000;
   useEffect(() => {
@@ -232,9 +234,23 @@ export default function HomeScreen({ navigation }) {
         }
 
         const dataMedicao = await medicoesMochila.json();
+        console.log(dataMedicao);
 
-        setPesoTotal(roundTo2(Number(dataMedicao.esquerda.MedicaoPeso) + Number(dataMedicao.direita.MedicaoPeso)));
-        const pesoTotalConta = roundTo2(Number(dataMedicao.esquerda.MedicaoPeso) + Number(dataMedicao.direita.MedicaoPeso));
+        let pesoTotalConta;
+        if (!dataMedicao.esquerda || !dataMedicao.direita) {
+          setPesoTotal(0);
+          pesoTotalConta = 0;
+          setPesoEsquerdo(0);
+          setPercEsquerdo(0);
+          setPesoDireito(0);
+          setPercDireito(0);
+          return;
+        }else{
+          setPesoTotal(roundTo2(Number(dataMedicao.esquerda.MedicaoPeso) + Number(dataMedicao.direita.MedicaoPeso)));
+          pesoTotalConta = roundTo2(Number(dataMedicao.esquerda.MedicaoPeso) + Number(dataMedicao.direita.MedicaoPeso));
+        }
+
+        setTemMochila(true);
 
         if (dataMedicao.esquerda) {
           setPesoEsquerdo(Number(dataMedicao.esquerda.MedicaoPeso));
@@ -250,6 +266,12 @@ export default function HomeScreen({ navigation }) {
         } else {
           setPesoDireito(0);
           setPercDireito(0);
+        }
+
+        if (((Number(pesoTotalConta) / Number(pesoMaximo)) * 100) > 50){
+          setCorTextoCirculo('#bd1c11ff');
+        }else{
+          setCorTextoCirculo('#338136ff');
         }
 
       } else {
@@ -304,7 +326,7 @@ export default function HomeScreen({ navigation }) {
           <View style={styles.middleContainer}>
             <Progress.Circle
               style={styles.circleWrapper}
-              size={180}
+              size={170}
               thickness={20}
               progress={Number(pesoTotal) / Number(pesoMaximo)}
               showsText={true}
@@ -318,6 +340,7 @@ export default function HomeScreen({ navigation }) {
                 fontSize: 22,
                 textAlign: "center",
                 fontWeight: "bold",
+                color: corTextoCirculo,
               }}
             />
 
