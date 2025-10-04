@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { View, Text, TouchableOpacity, StyleSheet, ToastAndroid, ScrollView, RefreshControl, ActivityIndicator } from "react-native";
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ToastAndroid, ScrollView, RefreshControl, ActivityIndicator } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -17,6 +17,13 @@ export default function BackpackScreen({ navigation }) {
 
   const [settingsVisible, setSettingsVisible] = useState(false);
   const [darkTheme, setDarkTheme] = useState(false);
+
+  // NOVOS STATES PARA CADASTRAR MOCHILA
+  const [newBackpackName, setNewBackpackName] = useState("");
+  const [newBackpackCode, setNewBackpackCode] = useState("");
+
+  // Novo state para abrir/fechar formulário
+  const [showAddForm, setShowAddForm] = useState(false);
 
   // Função para buscar as mochilas do usuário
   const fetchUserBackpacks = useCallback(async () => {
@@ -201,11 +208,55 @@ export default function BackpackScreen({ navigation }) {
     }
   };
 
+  // Função para cadastrar nova mochila
+  const handleAddBackpack = async () => {
+    if (!newBackpackName.trim() || !newBackpackCode.trim()) {
+      return ToastAndroid.show("Preencha todos os campos", ToastAndroid.SHORT);
+    }
+
+    try {
+      const resposta = await validarTokens(0, navigation);
+      if (resposta === 'false') return;
+      if (resposta !== 'true') return ToastAndroid.show(resposta, ToastAndroid.SHORT);
+
+      let tokens = await pegarTokens();
+      let { accessToken } = tokens;
+
+      const response = await fetch(`${LINKAPI}${PORTAPI}/usuarios-mochilas/vincular/`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          MochilaNome: newBackpackName,
+          MochilaCodigo: newBackpackCode,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        ToastAndroid.show(errorData.error || "Erro ao cadastrar mochila", ToastAndroid.SHORT);
+        return;
+      }
+
+      ToastAndroid.show("Mochila vinculada com sucesso!", ToastAndroid.SHORT);
+      setNewBackpackName("");
+      setNewBackpackCode("");
+      fetchUserBackpacks();
+
+    } catch (error) {
+      ToastAndroid.show("Erro ao conectar no servidor, tente novamente", ToastAndroid.SHORT);
+      await validarTokens(0, navigation);
+      return;
+    }
+  };
+
   if (loading) {
     return (
       <View style={[styles.container, styles.loadingContainer]}>
         <ActivityIndicator size="large" color="#0000ff" />
-        <Text style={{ marginTop: 10, alignItems: "center", textAlign: "center"}}>Carregando mochilas...</Text>
+        <Text style={{ marginTop: 10, alignItems: "center", textAlign: "center" }}>Carregando mochilas...</Text>
       </View>
     );
   }
@@ -214,6 +265,43 @@ export default function BackpackScreen({ navigation }) {
     <View style={styles.container}>
 
       <Text style={styles.title}>Minhas Mochilas</Text>
+
+
+      {/* BOTÃO PARA EXPANDIR/RECOLHER FORMULÁRIO */}
+      <TouchableOpacity
+        style={styles.toggleButton}
+        onPress={() => setShowAddForm(!showAddForm)}
+      >
+        <Ionicons
+          name={showAddForm ? "chevron-up" : "chevron-down"}
+          size={20}
+          color="#007bff"
+        />
+        <Text style={styles.toggleButtonText}>
+          {showAddForm ? "Fechar Cadastro de Mochila" : "Cadastrar Nova Mochila"}
+        </Text>
+      </TouchableOpacity>
+
+      {/* FORMULÁRIO DE CADASTRO (visível só se showAddForm = true) */}
+      {showAddForm && (
+        <View style={styles.addBackpackContainer}>
+          <TextInput
+            style={styles.input}
+            placeholder="Nome da Mochila"
+            value={newBackpackName}
+            onChangeText={setNewBackpackName}
+          />
+          <TextInput
+            style={styles.input}
+            placeholder="Código da Mochila"
+            value={newBackpackCode}
+            onChangeText={setNewBackpackCode}
+          />
+          <TouchableOpacity style={styles.addButton} onPress={handleAddBackpack}>
+            <Text style={styles.addButtonText}>CADASTRAR</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       <ScrollView
         style={styles.scrollView}
@@ -427,4 +515,72 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "bold",
   },
+
+
+  // NOVOS ESTILOS
+  addBackpackContainer: {
+    paddingHorizontal: 20,
+    marginBottom: 20,
+  },
+  input: {
+    backgroundColor: "#fff",
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: "#ccc",
+  },
+  addButton: {
+    backgroundColor: "#5CFF5C",
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  addButtonText: { color: "#000", fontWeight: "bold", fontSize: 16 },
+
+  scrollView: { width: "100%", paddingHorizontal: 10 },
+  scrollViewContent: { alignItems: "center", paddingBottom: 20 },
+  noBackpacksText: { fontSize: 16, color: "#6c757d", marginTop: 50 },
+
+  backpackCard: {
+    width: "95%",
+    backgroundColor: "#ffffff",
+    borderRadius: 15,
+    padding: 20,
+    marginBottom: 15,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  inUseCard: { backgroundColor: "#d4edda", borderWidth: 2, borderColor: "#28a745" },
+  lastUsedCard: { backgroundColor: "#e2e3e5", borderWidth: 1, borderColor: "#adb5bd" },
+  cardHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 10 },
+  backpackName: { fontSize: 18, fontWeight: "bold", color: "#3A3A3A" },
+  backpackStatus: { fontSize: 16, fontWeight: "bold", marginLeft: 10 },
+  statusLabel: { fontSize: 14, marginBottom: 8, color: "#555" },
+  backpackDescription: { fontSize: 14, color: "#555", marginBottom: 8 },
+  dateText: { fontSize: 13, color: "#777", marginBottom: 10 },
+
+  toggleButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#fff",
+    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 10,
+    marginHorizontal: 20,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: "#007bff",
+  },
+  toggleButtonText: {
+    color: "#007bff",
+    fontWeight: "bold",
+    fontSize: 16,
+    marginLeft: 8,
+  },
+
 });

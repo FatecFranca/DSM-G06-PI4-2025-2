@@ -21,6 +21,7 @@ export default function ProfileScreen({ navigation }) {
     const [nome, setNome] = useState("");
     const [peso, setPeso] = useState("");
     const [altura, setAltura] = useState("");
+    const [pesoMaxPor, setPesoMaxPor] = useState("");
     const [dtNascimento, setDtNascimento] = useState(new Date());
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [sexo, setSexo] = useState("");
@@ -140,6 +141,7 @@ export default function ProfileScreen({ navigation }) {
             setEmail(response.usuario.UsuarioEmail);
             setNome(response.usuario.UsuarioNome);
             setSexo(response.usuario.UsuarioSexo);
+            setPesoMaxPor(response.usuario.UsuarioPesoMaximoPorcentagem);
 
         } catch {
             if (error.name === "AbortError") {
@@ -235,6 +237,11 @@ export default function ProfileScreen({ navigation }) {
             return;
         }
 
+        let pesoMaxPorAPI = null;
+        if (pesoMaxPor && pesoMaxPor.trim() !== ""){
+            pesoMaxPorAPI = pesoMaxPor.replace(',', '.');
+        }
+
         try {
             // Timeout 3s
             const controller = new AbortController();
@@ -255,7 +262,7 @@ export default function ProfileScreen({ navigation }) {
                     UsuarioAltura: alturaParaAPI,
                     UsuarioSexo: sexo,
                     UsuarioFoto: null,
-                    UsuarioPesoMaximoPorcentagem: null
+                    UsuarioPesoMaximoPorcentagem: pesoMaxPorAPI
                 }),
                 signal: controller.signal
             });
@@ -411,6 +418,20 @@ export default function ProfileScreen({ navigation }) {
                     </View>
 
                     <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                        <TextInput
+                            style={styles.input_metade}
+                            placeholder="Peso Máx. (%)"
+                            placeholderTextColor="#3A3A3A"
+                            value={pesoMaxPor}
+                            keyboardType="numeric"
+                            onChangeText={(text) => {
+                                // Permite dígitos, opcionalmente seguidos por vírgula e até 2 casas decimais.
+                                const regex = /^\d*\,?\d{0,2}$/;
+                                // Se o usuário apagar tudo, aceita string vazia.
+                                if (regex.test(text) || text === "") setPesoMaxPor(text);
+                            }}
+                        />
+                        
                         <TouchableOpacity
                             style={[styles.input_metade, { justifyContent: "center" }]}
                             onPress={() => setShowDatePicker(true)}
@@ -419,8 +440,10 @@ export default function ProfileScreen({ navigation }) {
                                 {dtNascimento.toLocaleDateString("pt-BR")}
                             </Text>
                         </TouchableOpacity>
+                    </View>
 
-                        <View style={[styles.input_metade, { padding: 0 }]}>
+                    <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                        <View style={[styles.input, { padding: 0 }]}>
                             <Picker
                                 selectedValue={sexo}
                                 style={{ height: 50, width: "100%" }}
@@ -452,7 +475,7 @@ export default function ProfileScreen({ navigation }) {
                     </TouchableOpacity>
 
                     <TouchableOpacity style={styles.buttonDanger} onPress={handleExcluir}>
-                        <Text style={styles.buttonText}>EXCLUIR CONTA</Text>
+                        <Text style={styles.buttonTextDanger}>EXCLUIR CONTA</Text>
                     </TouchableOpacity>
 
                 </View>
@@ -555,5 +578,6 @@ const styles = StyleSheet.create({
         borderWidth: 2,
     },
     buttonText: { fontWeight: "bold", fontSize: 16, color: "#000" },
+    buttonTextDanger: { fontWeight: "bold", fontSize: 16, color: "red" },
     link: { fontSize: 13, color: "#3A3A3A", marginTop: 5 },
 });
