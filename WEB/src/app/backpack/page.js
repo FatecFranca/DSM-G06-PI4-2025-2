@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 import Card from "@/components/Card/Card";
 import BackpackForm from "@/components/BackPackForm/BackpackForm";
-import { useAuth } from "@/app/hooks/useAuth";
-import ProtectedRoute from "@/components/ProtectedRoutes/ProtectedRoutes";
+import { useAuth } from "@/app/hooks/useAuth"; 
+import ProtectedRoute from "@/components/ProtectedRoutes/ProtectedRoute"; // Corrigido nome
 
 export default function BackpackPage() {
   const [mochilas, setMochilas] = useState([]);
@@ -19,7 +19,7 @@ export default function BackpackPage() {
 
       const contentType = res.headers.get("content-type");
       if (!contentType || !contentType.includes("application/json")) {
-        // console.error("Resposta não é JSON. Status:", res.status);
+        console.error("Resposta não é JSON. Status:", res.status);
         setMochilas([]);
         return;
       }
@@ -73,28 +73,103 @@ export default function BackpackPage() {
     }
   };
 
+  // Nova função: Assumir uso da mochila
+  const handleAssumirUso = async (codigoMochila) => {
+    setMsg("");
+    try {
+      const res = await authFetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/usuarios-mochilas/assumir`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            MochilaCodigo: codigoMochila,
+          }),
+        }
+      );
+
+      const data = await res.json();
+      if (!res.ok) {
+        setMsg(data.error || "Erro ao assumir uso da mochila.");
+        return;
+      }
+
+      setMsg("Uso da mochila assumido com sucesso!");
+      load(); // Atualiza a lista
+    } catch (e) {
+      console.error("Erro de conexão:", e);
+      setMsg("Erro de conexão com o servidor.");
+    }
+  };
+
+  // Nova função: Encerrar uso da mochila
+  const handleEncerrarUso = async (codigoMochila) => {
+    setMsg("");
+    try {
+      const res = await authFetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/usuarios-mochilas/encerrarUsoApp`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            MochilaCodigo: codigoMochila,
+          }),
+        }
+      );
+
+      const data = await res.json();
+      if (!res.ok) {
+        setMsg(data.error || "Erro ao encerrar uso da mochila.");
+        return;
+      }
+
+      setMsg("Uso da mochila encerrado com sucesso!");
+      load(); // Atualiza a lista
+    } catch (e) {
+      console.error("Erro de conexão:", e);
+      setMsg("Erro de conexão com o servidor.");
+    }
+  };
+
   return (
     <ProtectedRoute>
-      <main className="min-h-screen p-8 text-black text-center">
+      <main className="min-h-screen p-8 text-black">
         <div className="max-w-4xl mx-auto bg-white p-6 rounded-2xl">
-          <h2 className="text-2xl font-semibold ">Minhas Mochilas</h2>
+          <h2 className="text-2xl font-semibold">Minhas Mochilas</h2>
 
           <section className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
             {mochilas.length > 0 ? (
               mochilas.map((m) => (
                 <Card
                   key={m.MochilaCodigo}
-                  title={`${m.MochilaCodigo} - ${
-                    m.MochilaNome || m.MochilaDescricao
-                  }`}
+                  title={`${m.MochilaCodigo} - ${m.MochilaNome || m.MochilaDescricao}`}
                   description={`Peso máximo: ${m.MochilaPesoMax} kg | Status: ${m.UsoStatus}`}
                 >
                   <div className="flex gap-2 mt-2">
                     <span className="text-sm text-gray-600">
-                      {m.UsoStatus === "Usando"
-                        ? "✅ Em uso"
-                        : "⏸️ Não está em uso"}
+                      {m.UsoStatus === "Usando" ? (
+                        <span className="text-green-600">✅ Em uso</span>
+                      ) : m.UsoStatus === "Último a Usar" ? (
+                        <span className="text-yellow-600">⏸️ Último a usar</span>
+                      ) : (
+                        <span className="text-gray-600">⏸️ Não está em uso</span>
+                      )}
                     </span>
+                  </div>
+                  <div className="flex gap-2 mt-3">
+                    {m.UsoStatus === "Usando" ? (
+                      <button
+                        onClick={() => handleEncerrarUso(m.MochilaCodigo)}
+                        className="bg-red-400 hover:bg-red-500 text-white px-3 py-1 rounded text-sm"
+                      >
+                        Encerrar uso
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handleAssumirUso(m.MochilaCodigo)}
+                        className="bg-green-400 hover:bg-green-500 text-white px-3 py-1 rounded text-sm"
+                      >
+                        Assumir uso
+                      </button>
+                    )}
                   </div>
                 </Card>
               ))
