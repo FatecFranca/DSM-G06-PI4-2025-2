@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import Card from "@/components/Card/Card";
 import BackpackForm from "@/components/BackPackForm/BackpackForm";
 import { useAuth } from "@/app/hooks/useAuth"; 
-import ProtectedRoute from "@/components/ProtectedRoutes/ProtectedRoute"; // Corrigido nome
+import ProtectedRoute from "@/components/ProtectedRoutes/ProtectedRoute"; 
+import Header from "@/components/Header/Header";
 
 export default function BackpackPage() {
   const [mochilas, setMochilas] = useState([]);
@@ -131,19 +132,20 @@ export default function BackpackPage() {
 
   return (
     <ProtectedRoute>
+      <Header />
       <main className="min-h-screen p-8 text-black">
         <div className="max-w-4xl mx-auto bg-white p-6 rounded-2xl">
-          <h2 className="text-2xl font-semibold">Minhas Mochilas</h2>
+          <h2 className="text-2xl font-semibold text-center">Minhas Mochilas</h2>
 
-          <section className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+          <section className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 ">
             {mochilas.length > 0 ? (
               mochilas.map((m) => (
                 <Card
                   key={m.MochilaCodigo}
-                  title={`${m.MochilaCodigo} - ${m.MochilaNome || m.MochilaDescricao}`}
+                  title={`${m.MochilaNome || m.MochilaDescricao}`}
                   description={`Peso máximo: ${m.MochilaPesoMax} kg | Status: ${m.UsoStatus}`}
                 >
-                  <div className="flex gap-2 mt-2">
+                  <div className="flex gap-2 mt-2 justify-center">
                     <span className="text-sm text-gray-600">
                       {m.UsoStatus === "Usando" ? (
                         <span className="text-green-600">✅ Em uso</span>
@@ -154,7 +156,7 @@ export default function BackpackPage() {
                       )}
                     </span>
                   </div>
-                  <div className="flex gap-2 mt-3">
+                  <div className="flex gap-2 mt-3 justify-center">
                     {m.UsoStatus === "Usando" ? (
                       <button
                         onClick={() => handleEncerrarUso(m.MochilaCodigo)}
@@ -204,8 +206,8 @@ export default function BackpackPage() {
             )}
           </section>
 
-          <section className="mt-8 p-4 bg-yellow-50 rounded-lg text-sm text-yellow-800">
-            <strong>💡 Dica:</strong> O código da mochila é gerado pelo
+          <section className="mt-8 p-4 bg-yellow-50 rounded-lg text-sm text-yellow-500 ">
+            <strong className="text-yellow-500">💡 Dica:</strong> O código da mochila é gerado pelo
             administrador ao cadastrar a mochila. Ele é composto por 12
             caracteres alfanuméricos (ex: <code>nopao4Fbm1DW</code>).
           </section>

@@ -2,66 +2,80 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { useAuth } from "@/app/hooks/useAuth"; 
+import { UserIcon } from '@heroicons/react/24/outline';
 
 export default function Header() {
   const [isOpen, setIsOpen] = useState(false);
+  const { user } = useAuth(); // Verifica se o usuário está logado
+
+  const toggleMenu = () => setIsOpen(!isOpen);
+  const closeMenu = () => setIsOpen(false);
+
+  // Rotas públicas (quando não logado)
+  const publicRoutes = [
+    { href: "/home", label: "Ínicio" },
+    { href: "/login", label: "Login" },
+  ];
+
+  // Rotas privadas (quando logado)
+  const privateRoutes = [
+    { href: "/backpack", label: "Mochilas" },
+    { href: "/alerts", label: "Alertas" },
+    { href: "/reports", label: "Relatórios" },
+    { href: "/profile", label: "Perfil" },
+  ];
+
+  const routes = user ? privateRoutes : publicRoutes;
 
   return (
     <header className="sticky top-0 left-0 right-0 bg-[#7DFA48] text-white px-6 py-4 shadow-lg z-50 rounded-b-4xl">
-      <div className="max-w-7xl mx-auto flex items-center justify-center">
-        <nav
-          className={`${
-            isOpen
-              ? "max-h-60 opacity-100"
-              : "max-h-0 opacity-0 md:max-h-none md:opacity-100"
-          } md:flex md:items-center md:gap-4 overflow-hidden transition-all duration-300 ease-in-out`}
-        >
-          <ul className="flex flex-col md:flex-row items-center justify-center gap-4 mt-4 md:mt-0 w-full md:w-auto">
-            <li>
-              <Link href="/home" onClick={() => setIsOpen(false)}>
-                <button className="block text-black px-4 py-2 cursor-pointer text-sm md:text-base">
-                  Ínicio
-                </button>
-              </Link>
-            </li>
-            {/* <li>
-              <Link href="/backpack" onClick={() => setIsOpen(false)}>
-                <button className="block text-black px-4 py-2 cursor-pointer text-sm md:text-base">
-                  Mochilas
-                </button>
-              </Link>
-            </li> */}
-            <li>
-              <Link href="/login" onClick={() => setIsOpen(false)}>
-                <button className="block text-black px-4 py-2 cursor-pointer text-sm md:text-base">
-                  Login
-                </button>
-              </Link>
-            </li>
+      <div className="max-w-7xl mx-auto flex items-center justify-between">
+
+        {/* Menu para desktop */}
+        <nav className="hidden md:flex flex-1 justify-center">
+          <ul className="flex justify-center gap-8"> {/* Distribuição equidistante */}
+            {routes.map((route) => (
+              <li key={route.href}>
+                <Link href={route.href}>
+                  <span className="block text-black px-4 py-2 cursor-pointer text-sm md:text-base hover:underline">
+                    {route.label}
+                  </span>
+                </Link>
+              </li>
+            ))}
           </ul>
         </nav>
 
-        {/* Botão hambúrguer (mobile) - agora à esquerda, mas sem afetar o centro */}
+        {/* Botão do menu hambúrguer para mobile */}
         <button
-          className="md:hidden text-white focus:outline-none ml-4"
-          onClick={() => setIsOpen(!isOpen)}
-          aria-label="Toggle menu"
+          onClick={toggleMenu}
+          className="md:hidden text-black text-2xl focus:outline-none"
+          aria-label={isOpen ? "Fechar menu" : "Abrir menu"}
         >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-6 w-6"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d={isOpen ? "M6 18L18 6M6 6l12 12" : "M4 6h16M4 12h16M4 18h16"}
-            />
-          </svg>
+          {isOpen ? "✕" : "☰"}
         </button>
+      </div>
+
+      {/* Menu mobile */}
+      <div
+        className={`md:hidden overflow-hidden transition-all duration-300 ease-in-out ${
+          isOpen ? "max-h-screen opacity-100" : "max-h-0 opacity-0"
+        }`}
+      >
+        <nav>
+          <ul className="flex flex-col items-center gap-2 py-4">
+            {routes.map((route) => (
+              <li key={route.href} className="w-full">
+                <Link href={route.href} onClick={closeMenu}>
+                  <span className="block text-black px-4 py-3 cursor-pointer text-center hover:bg-green-200 rounded-lg">
+                    {route.label}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
       </div>
     </header>
   );
