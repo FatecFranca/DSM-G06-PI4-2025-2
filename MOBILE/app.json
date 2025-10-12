@@ -13,15 +13,22 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSCameraUsageDescription": "Este aplicativo precisa de acesso à câmera para escanear QR Codes."
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
+      "softwareKeyboardLayoutMode": "pan",
       "edgeToEdgeEnabled": true,
-      "package": "com.luispedrocarrocini.mochilainteligente"
+      "package": "com.luispedrocarrocini.mochilainteligente",
+      "permissions": [
+        "CAMERA"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -30,6 +37,10 @@
       "eas": {
         "projectId": "5aeac9fb-5fff-4923-9a5f-bdc5419920fa"
       }
-    }
+    },
+    "plugins": [
+      "expo-barcode-scanner",
+      "expo-font"
+    ]
   }
 }

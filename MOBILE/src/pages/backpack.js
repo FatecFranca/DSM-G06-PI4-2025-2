@@ -1,8 +1,11 @@
-import React, { useState, useEffect, useCallback } from "react";
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ToastAndroid, ScrollView, RefreshControl, ActivityIndicator } from "react-native";
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ToastAndroid, ScrollView, RefreshControl, ActivityIndicator, Alert, Modal, Platform } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+
+import * as CameraModule from "expo-camera";
+const Camera = CameraModule.Camera; // <--- GARANTA QUE O COMPONENTE SEJA UM OBJETO DE COMPONENTE VÁLIDO
 
 import { LINKAPI, PORTAPI } from "../utils/global";
 import { validarTokens, pegarTokens } from "../utils/validacoes";
@@ -11,6 +14,15 @@ import BottomNav from "../components/BottomNav";
 import SettingsModal from "../components/SettingsModal";
 
 export default function BackpackScreen({ navigation }) {
+  const [hasPermission, setHasPermission] = useState(null);
+  const [scanning, setScanning] = useState(false);
+  const [scanned, setScanned] = useState(false);
+  const cameraRef = useRef(null);
+
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [selectedBackpack, setSelectedBackpack] = useState(null);
+  const [editedName, setEditedName] = useState("");
+
   const [backpacks, setBackpacks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -18,40 +30,124 @@ export default function BackpackScreen({ navigation }) {
   const [settingsVisible, setSettingsVisible] = useState(false);
   const [darkTheme, setDarkTheme] = useState(false);
 
-  // NOVOS STATES PARA CADASTRAR MOCHILA
   const [newBackpackName, setNewBackpackName] = useState("");
   const [newBackpackCode, setNewBackpackCode] = useState("");
-
-  // Novo state para abrir/fechar formulário
   const [showAddForm, setShowAddForm] = useState(false);
 
-  // Função para buscar as mochilas do usuário
+  const openEditModal = (backpack) => {
+    setSelectedBackpack(backpack);
+    setEditedName(backpack.MochilaNome);
+    setEditModalVisible(true);
+  };
+
+  const handleConfirmEdit = async () => {
+    if (!editedName.trim()) {
+      return ToastAndroid.show("Digite um nome válido", ToastAndroid.SHORT);
+    }
+
+    try {
+      const resposta = await validarTokens(0, navigation);
+      if (resposta !== "true") {
+        if (resposta === "false") return;
+        return ToastAndroid.show(resposta, ToastAndroid.SHORT);
+      }
+
+      const tokens = await pegarTokens();
+      const { accessToken } = tokens;
+
+      const response = await fetch(`${LINKAPI}${PORTAPI}/usuarios-mochilas/editarNome`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${String(accessToken)}`,
+        },
+        body: JSON.stringify({
+          MochilaCodigo: selectedBackpack.MochilaCodigo,
+          NovoNome: editedName.trim(),
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return ToastAndroid.show(data.error || "Erro ao editar mochila", ToastAndroid.SHORT);
+      }
+
+      ToastAndroid.show("Nome da mochila atualizado!", ToastAndroid.SHORT);
+      setEditModalVisible(false);
+      fetchUserBackpacks();
+    } catch (error) {
+      console.log(error);
+      ToastAndroid.show("Erro ao conectar no servidor", ToastAndroid.SHORT);
+    }
+  };
+
+  const handleUnlinkBackpack = (backpackCode) => {
+    Alert.alert(
+      "Desvincular Mochila",
+      "Deseja realmente desvincular esta mochila?",
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Desvincular",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              const resposta = await validarTokens(0, navigation);
+              if (resposta !== "true") {
+                if (resposta === "false") return;
+                return ToastAndroid.show(resposta, ToastAndroid.SHORT);
+              }
+
+              const tokens = await pegarTokens();
+              const { accessToken } = tokens;
+
+              const response = await fetch(`${LINKAPI}${PORTAPI}/usuarios-mochilas/desvincular`, {
+                method: "DELETE",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${String(accessToken)}`,
+                },
+                body: JSON.stringify({ MochilaCodigo: backpackCode }),
+              });
+
+              const data = await response.json();
+
+              if (!response.ok) {
+                return ToastAndroid.show(data.error || "Erro ao desvincular mochila", ToastAndroid.SHORT);
+              }
+
+              ToastAndroid.show("Mochila desvinculada com sucesso!", ToastAndroid.SHORT);
+              fetchUserBackpacks();
+            } catch (error) {
+              console.log(error);
+              ToastAndroid.show("Erro ao conectar no servidor", ToastAndroid.SHORT);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const fetchUserBackpacks = useCallback(async () => {
     try {
-
       const resposta = await validarTokens(0, navigation);
-
-      if (resposta === 'true') {
-      } else if (resposta === 'false') {
-        return;
-      } else {
+      if (resposta !== "true") {
+        if (resposta === "false") return;
         return ToastAndroid.show(resposta, ToastAndroid.SHORT);
       }
 
       let tokens = await pegarTokens();
-      let { accessToken, refreshToken } = tokens;
+      let { accessToken } = tokens;
 
-      // Timeout 10s
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 10000);
-
-      //console.log(accessToken);
 
       const response = await fetch(`${LINKAPI}${PORTAPI}/usuarios-mochilas/usuario/`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${accessToken}`,
+          Authorization: `Bearer ${accessToken}`,
         },
         signal: controller.signal,
       });
@@ -66,43 +162,34 @@ export default function BackpackScreen({ navigation }) {
       }
 
       const data = await response.json();
-
       const backpacksData = Array.isArray(data.mochilas) ? data.mochilas : [];
-      //console.log(backpacksData);
 
-      // Mapeia e formata as datas antes de armazenar
-      const formattedData = backpacksData.map(item => ({
+      const formattedData = backpacksData.map((item) => ({
         ...item,
         DataInicioUso: item.DataInicioUso ? new Date(item.DataInicioUso) : null,
         DataFimUso: item.DataFimUso ? new Date(item.DataFimUso) : null,
       }));
 
-      // Ordena: mochila em uso primeiro, depois as de último uso por data (mais recente primeiro)
       formattedData.sort((a, b) => {
         if (a.UsoStatus === "Usando" && b.UsoStatus !== "Usando") return -1;
         if (a.UsoStatus !== "Usando" && b.UsoStatus === "Usando") return 1;
-
-        // Se ambos são "Último a Usar", ordena pela data de fim (ou início, se fim for nulo)
         if (a.UsoStatus === "Último a Usar" && b.UsoStatus === "Último a Usar") {
           const dateA = a.DataFimUso || a.DataInicioUso;
           const dateB = b.DataFimUso || b.DataInicioUso;
-          return dateB.getTime() - dateA.getTime(); // Mais recente primeiro
+          return dateB.getTime() - dateA.getTime();
         }
-        return 0; // Mantém a ordem se os status forem iguais e não forem "Último a Usar"
+        return 0;
       });
 
       setBackpacks(formattedData);
     } catch (error) {
       if (error.name === "AbortError") {
         ToastAndroid.show("Servidor demorou a responder ao buscar mochilas", ToastAndroid.LONG);
-        setBackpacks([]);
-        return;
       } else {
         console.log(error);
         ToastAndroid.show("Erro ao conectar no servidor", ToastAndroid.LONG);
-        setBackpacks([]);
-        return;
       }
+      setBackpacks([]);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -113,16 +200,33 @@ export default function BackpackScreen({ navigation }) {
     fetchUserBackpacks();
   }, [fetchUserBackpacks]);
 
+  // ✅ Atualizado para usar a Camera (não mais BarCodeScanner)
+  useEffect(() => {
+    (async () => {
+      const { status } = await Camera.requestCameraPermissionsAsync();
+      setHasPermission(status === "granted");
+    })();
+  }, []);
+
   const onRefresh = useCallback(() => {
     setRefreshing(true);
     fetchUserBackpacks();
   }, [fetchUserBackpacks]);
 
-  // Função para formatar a data
   const formatDate = (date) => {
     if (!date) return "N/A";
     return format(date, "dd/MM/yyyy HH:mm", { locale: ptBR });
   };
+
+  const handleBarCodeScanned = ({ data }) => {
+    setScanned(true);
+    setNewBackpackCode(data);
+    setScanning(false);
+    ToastAndroid.show(`Código lido: ${data}`, ToastAndroid.SHORT);
+  };
+
+  // (restante do código permanece igual até o Modal)
+
 
   // Função para iniciar o uso de uma mochila
   const handleStartUsing = async (backpackCode) => {
@@ -297,9 +401,21 @@ export default function BackpackScreen({ navigation }) {
             value={newBackpackCode}
             onChangeText={setNewBackpackCode}
           />
+
+          {/*}
+          <TouchableOpacity
+            style={[styles.addButton, { backgroundColor: "#007bff", marginBottom: 10 }]}
+            onPress={() => setScanning(true)}
+          >
+            <Ionicons name="camera-outline" size={20} color="#fff" />
+            <Text style={[styles.addButtonText, { color: "#fff" }]}>ESCANEAR QR CODE</Text>
+          </TouchableOpacity>
+          {*/}
+
           <TouchableOpacity style={styles.addButton} onPress={handleAddBackpack}>
             <Text style={styles.addButtonText}>CADASTRAR</Text>
           </TouchableOpacity>
+          
         </View>
       )}
 
@@ -362,6 +478,24 @@ export default function BackpackScreen({ navigation }) {
                   </TouchableOpacity>
                 )}
               </View>
+
+              <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 10 }}>
+                <TouchableOpacity
+                  style={[styles.smallButton, { backgroundColor: "#ffc107" }]}
+                  onPress={() => openEditModal(backpack)}
+                >
+                  <Text style={styles.smallButtonText}>Editar Nome</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.smallButton, { backgroundColor: "#6c757d" }]}
+                  onPress={() => handleUnlinkBackpack(backpack.MochilaCodigo)}
+                >
+                  <Text style={styles.smallButtonText}>Desvincular</Text>
+                </TouchableOpacity>
+              </View>
+
+
             </View>
           ))
         )}
@@ -382,6 +516,40 @@ export default function BackpackScreen({ navigation }) {
         }}
       />
 
+      {/* MODAL PARA EDITAR NOME DA MOCHILA */}
+      <Modal
+        visible={editModalVisible}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setEditModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <Text style={styles.modalTitle}>Editar Nome da Mochila</Text>
+            <TextInput
+              style={styles.modalInput}
+              placeholder="Novo nome"
+              value={editedName}
+              onChangeText={setEditedName}
+            />
+            <View style={styles.modalButtonContainer}>
+              <TouchableOpacity
+                style={[styles.modalButton, { backgroundColor: "#6c757d" }]}
+                onPress={() => setEditModalVisible(false)}
+              >
+                <Text style={styles.modalButtonText}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, { backgroundColor: "#007bff" }]}
+                onPress={handleConfirmEdit}
+              >
+                <Text style={styles.modalButtonText}>Salvar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       {/* Barra inferior reutilizável */}
       <BottomNav
         navigation={navigation}
@@ -394,8 +562,8 @@ export default function BackpackScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#e0f7fa", // Cor de fundo semelhante ao protótipo
-    paddingTop: 50, // Espaço para o botão voltar e título
+    backgroundColor: "#e0f7fa",
+    paddingTop: 50,
   },
   loadingContainer: {
     justifyContent: 'center',
@@ -420,7 +588,7 @@ const styles = StyleSheet.create({
   },
   scrollViewContent: {
     alignItems: "center",
-    paddingBottom: 20, // Espaço no final da lista
+    paddingBottom: 20,
   },
   noBackpacksText: {
     fontSize: 16,
@@ -440,14 +608,14 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   inUseCard: {
-    backgroundColor: "#d4edda", // Verde claro para "Usando"
+    backgroundColor: "#d4edda", 
     borderWidth: 2,
-    borderColor: "#28a745", // Borda verde
+    borderColor: "#28a745", 
   },
   lastUsedCard: {
-    backgroundColor: "#e2e3e5", // Cinza claro para "Último a Usar"
+    backgroundColor: "#e2e3e5", 
     borderWidth: 1,
-    borderColor: "#adb5bd", // Borda cinza
+    borderColor: "#adb5bd", 
   },
   cardHeader: {
     flexDirection: "row",
@@ -459,18 +627,21 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "bold",
     color: "#3A3A3A",
-    flexShrink: 1, // Permite que o texto quebre linha se for longo
+    flexShrink: 1, 
+    marginRight: 10,
   },
   statusLabel: {
     fontSize: 14,
     marginBottom: 8,
-    fontWeight: 'normal', // Apelido normal, descrição em negrito
+    fontWeight: 'normal', 
     color: '#555',
   },
   backpackStatus: {
     fontSize: 16,
     fontWeight: "bold",
     marginLeft: 10,
+    flexShrink: 0, 
+    textAlign: 'right',
   },
   backpackDescription: {
     fontSize: 14,
@@ -492,10 +663,10 @@ const styles = StyleSheet.create({
     width: "100%",
   },
   startUsingButton: {
-    backgroundColor: "#007bff", // Azul
+    backgroundColor: "#007bff", 
   },
   stopUsingButton: {
-    backgroundColor: "#dc3545", // Vermelho
+    backgroundColor: "#dc3545", 
   },
   actionButtonText: {
     color: "#fff",
@@ -557,7 +728,7 @@ const styles = StyleSheet.create({
   inUseCard: { backgroundColor: "#d4edda", borderWidth: 2, borderColor: "#28a745" },
   lastUsedCard: { backgroundColor: "#e2e3e5", borderWidth: 1, borderColor: "#adb5bd" },
   cardHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 10 },
-  backpackName: { fontSize: 18, fontWeight: "bold", color: "#3A3A3A" },
+  backpackName: { fontSize: 18, fontWeight: "bold", color: "#3A3A3A", flexShrink: 1 },
   backpackStatus: { fontSize: 16, fontWeight: "bold", marginLeft: 10 },
   statusLabel: { fontSize: 14, marginBottom: 8, color: "#555" },
   backpackDescription: { fontSize: 14, color: "#555", marginBottom: 8 },
@@ -581,6 +752,64 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     fontSize: 16,
     marginLeft: 8,
+  },
+
+  // Editar Moochila e Desvincular
+  smallButton: {
+    flex: 1,
+    marginHorizontal: 5,
+    paddingVertical: 8,
+    borderRadius: 6,
+    alignItems: "center",
+  },
+  smallButtonText: {
+    color: "#fff",
+    fontWeight: "bold",
+    fontSize: 14,
+  },
+
+  // --- Modal de Edição ---
+  modalOverlay: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.5)",
+  },
+  modalContainer: {
+    width: "85%",
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    padding: 20,
+    elevation: 5,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 10,
+    textAlign: "center",
+  },
+  modalInput: {
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 15,
+  },
+  modalButtonContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  modalButton: {
+    flex: 1,
+    marginHorizontal: 5,
+    paddingVertical: 10,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  modalButtonText: {
+    color: "#fff",
+    fontWeight: "bold",
+    fontSize: 15,
   },
 
 });

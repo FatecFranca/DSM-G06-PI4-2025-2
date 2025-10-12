@@ -8,6 +8,7 @@ import Register from "./pages/register";
 import Home from "./pages/home";
 import Profile from "./pages/profile";
 import Backpack from "./pages/backpack";
+import DeleteAccount from "./pages/deleteAccount";
 
 const Stack = createStackNavigator();
 
@@ -43,6 +44,11 @@ export default function Routes() {
                 <Stack.Screen
                     name="backpack"
                     component={Backpack}
+                    options={{ headerShown: false }} 
+                />
+                <Stack.Screen
+                    name="deleteAccount"
+                    component={DeleteAccount}
                     options={{ headerShown: false }} 
                 />
             </Stack.Navigator>
