@@ -510,8 +510,9 @@ export async function alterarMochila(req, res) {
 
         
     } catch (error) {
-        console.error(error);
-        return res.status(500).json({ error: "Erro ao alterar mochila" });
+        console.error(error.message);
+        return null; 
+        // res.status(500).json({ error: "Erro ao alterar mochila" });
     } finally {
         await prisma.$disconnect();
     }

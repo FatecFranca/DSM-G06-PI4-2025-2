@@ -1,3 +1,4 @@
+// src/hooks/useAuth.js
 'use client';
 
 import { useState, useEffect, useContext, createContext } from 'react';
@@ -34,8 +35,7 @@ export function AuthProvider({ children }) {
     localStorage.setItem('accessToken', data.accessToken);
     localStorage.setItem('refreshToken', data.refreshToken);
     localStorage.setItem('usuarioEmail', email);
-
-    // Atualiza o estado do contexto imediatamente
+    // Atualiza o estado do contexto imediatamente após o login
     setUser({ token: data.accessToken, email });
 
     return data;
@@ -63,20 +63,37 @@ export function AuthProvider({ children }) {
 
     let response = await fetch(url, config);
 
-    if (response.status === 401) {
+    if (response.status === 401) { // Token expirado ou inválido?
       const refreshToken = localStorage.getItem('refreshToken');
       if (refreshToken) {
         try {
+          console.log("Tentando renovar token..."); // Log de debug
           const refreshRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/token/refresh`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ token: refreshToken })
           });
 
-          const refreshData = await refreshRes.json();
+          // --- VERIFICAÇÃO ADICIONADA: Content-Type da resposta de refresh ---
+          const refreshContentType = refreshRes.headers.get('content-type');
+          if (!refreshRes.ok || !refreshContentType || !refreshContentType.includes('application/json')) {
+            console.error("Erro na resposta de refresh (não JSON):", refreshRes.status, refreshContentType);
+            // Tenta ler o corpo como texto para ver o erro HTML ou mensagem
+            const errorText = await refreshRes.text();
+            console.error("Corpo da resposta (erro refresh):", errorText);
+            // Mesmo que a resposta não seja JSON, forçamos o logout
+            logout();
+            return response; // Retorna a resposta original (provavelmente 401)
+          }
+          // --- FIM DA VERIFICAÇÃO ---
+
+          const refreshData = await refreshRes.json(); // Agora é seguro chamar .json()
 
           if (refreshRes.ok) {
+            console.log("Token renovado com sucesso!"); // Log de debug
             localStorage.setItem('accessToken', refreshData.accessToken);
+            // Atualiza o estado do contexto com o novo token (opcional, dependendo da necessidade)
+            // setUser(prev => prev ? { ...prev, token: refreshData.accessToken } : null);
             const newConfig = {
               ...options,
               headers: {
@@ -85,15 +102,20 @@ export function AuthProvider({ children }) {
                 'Content-Type': 'application/json'
               }
             };
+            // Faz a requisição original novamente com o novo token
             response = await fetch(url, newConfig);
           } else {
-            logout();
+            console.error("Falha na renovação do token (resposta JSON com erro):", refreshData);
+            logout(); // A API retornou um erro específico para a renovação
           }
         } catch (e) {
-          logout();
+          // Captura erros de rede, falha no .json(), etc.
+          console.error("Erro crítico ao renovar token:", e);
+          logout(); // Qualquer erro na renovação leva ao logout
         }
       } else {
-        logout();
+        console.error("Nenhum refreshToken encontrado, fazendo logout.");
+        logout(); // Não tem refreshToken para tentar renovação
       }
     }
 
