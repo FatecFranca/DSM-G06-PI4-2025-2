@@ -162,62 +162,6 @@ export default function ProfileScreen({ navigation }) {
         }
     };
 
-    // FUNÇÃO DE EXCLUSÃO FINAL, CHAMADA PELO MODAL
-    const handleExcluirContaFinal = async () => {
-        // A senha para exclusão virá do state do modal
-        if (!senhaExclusao || senhaExclusao.trim() === "") {
-            ToastAndroid.show(
-                "Para exclusão informe a senha atual",
-                ToastAndroid.SHORT
-            );
-            if (senhaExclusaoRef.current) senhaExclusaoRef.current.focus();
-            return;
-        }
-
-        setDeleteModalVisible(false); // Fecha o modal antes de chamar a API
-
-        try {
-            const controller = new AbortController();
-            const timeout = setTimeout(() => controller.abort(), 3000);
-
-            let tokens = await pegarTokens();
-            let { accessToken } = tokens;
-
-            const response = await fetch(LINKAPI + PORTAPI + "/usuarios", {
-                method: "DELETE",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${accessToken}`,
-                },
-                // USA A SENHA CAPTURADA NO MODAL
-                body: JSON.stringify({ UsuarioSenha: senhaExclusao }),
-                signal: controller.signal,
-            });
-
-            clearTimeout(timeout);
-            setSenhaExclusao(""); // Limpa a senha após a tentativa
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                ToastAndroid.show(
-                    errorData.error || "Erro ao excluir conta",
-                    ToastAndroid.SHORT
-                );
-                return;
-            }
-
-            await limparTokens();
-            navigation.reset({
-                index: 0,
-                routes: [{ name: "login" }],
-            });
-            ToastAndroid.show("Conta excluída com sucesso!", ToastAndroid.SHORT);
-        } catch (error) {
-            setDeleteModalVisible(true);
-            ToastAndroid.show("Erro ao conectar no servidor", ToastAndroid.SHORT);
-        }
-    };
-
     const handleAbrirModalExclusao = () => {
         navigation.navigate('deleteAccount', { userEmail: email });
     };

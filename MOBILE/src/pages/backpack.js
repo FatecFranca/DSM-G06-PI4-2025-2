@@ -216,17 +216,7 @@ export default function BackpackScreen({ navigation }) {
     if (!date) return "N/A";
     return format(date, "dd/MM/yyyy HH:mm", { locale: ptBR });
   };
-
-  const handleBarCodeScanned = ({ data }) => {
-    setScanned(true);
-    setNewBackpackCode(data);
-    setScanning(false);
-    ToastAndroid.show(`Código lido: ${data}`, ToastAndroid.SHORT);
-  };
-
-  // (restante do código permanece igual até o Modal)
-
-
+  
   // Função para iniciar o uso de uma mochila
   const handleStartUsing = async (backpackCode) => {
     try {

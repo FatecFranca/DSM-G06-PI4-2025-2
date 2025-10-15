@@ -9,6 +9,8 @@ import Home from "./pages/home";
 import Profile from "./pages/profile";
 import Backpack from "./pages/backpack";
 import DeleteAccount from "./pages/deleteAccount";
+import Reports from "./pages/reports";
+import Graphics from "./pages/graphics";
 
 const Stack = createStackNavigator();
 
@@ -44,6 +46,16 @@ export default function Routes() {
                 <Stack.Screen
                     name="backpack"
                     component={Backpack}
+                    options={{ headerShown: false }} 
+                />
+                <Stack.Screen
+                    name="reports"
+                    component={Reports}
+                    options={{ headerShown: false }} 
+                />
+                <Stack.Screen
+                    name="graphics"
+                    component={Graphics}
                     options={{ headerShown: false }} 
                 />
                 <Stack.Screen
