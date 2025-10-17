@@ -10,7 +10,7 @@ import { validarTokens, pegarTokens } from "../utils/validacoes";
 import BottomNav from "../components/BottomNav";
 import SettingsModal from "../components/SettingsModal";
 
-export default function BackpackScreen({ navigation }) {
+export default function ReportScreen({ navigation }) {
 
   const [backpacks, setBackpacks] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -126,7 +126,7 @@ export default function BackpackScreen({ navigation }) {
                 styles.backpackCard,
                 backpack.UsoStatus === "Usando" ? styles.inUseCard : styles.lastUsedCard,
               ]}
-              onPress={() => navigation.navigate("graphics", { codigo: backpack.MochilaCodigo })}
+              onPress={() => navigation.navigate("reportingOptions", { codigo: backpack.MochilaCodigo, nome: backpack.MochilaNome })}
             >
               <View style={styles.cardHeader}>
                 <Text style={styles.backpackName}>{backpack.MochilaNome}</Text>
@@ -232,14 +232,14 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   inUseCard: {
-    backgroundColor: "#cee3e6ff",
+    backgroundColor: "#fbfffbff",
     borderWidth: 2,
-    borderColor: "#9dadafff"
+    borderColor: "#aafdaaff"
   },
   lastUsedCard: {
-    backgroundColor: "#ced8e6ff",
+    backgroundColor: "#fbfffbff",
     borderWidth: 2,
-    borderColor: "#9da8afff"
+    borderColor: "#aafdaaff"
   },
   cardHeader: {
     flexDirection: "row",

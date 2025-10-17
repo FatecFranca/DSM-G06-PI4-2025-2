@@ -112,7 +112,6 @@ export async function validarTokens(tentativas, navigation) {
     console.log('Tentativas: ' + tentativas);
     if (tentativas > 5) {
       console.log('Tentativas excedidas');
-      await limparTokens();
       navigation.reset({
         index: 0,
         routes: [{ name: "login" }],
@@ -128,7 +127,7 @@ export async function validarTokens(tentativas, navigation) {
       await limparTokens();
       navigation.reset({
         index: 0,
-        routes: [{ name: "login" }],
+        routes: [{ name: "main" }],
       });
       return 'false';
     }

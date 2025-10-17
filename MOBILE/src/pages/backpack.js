@@ -391,16 +391,6 @@ export default function BackpackScreen({ navigation }) {
             onChangeText={setNewBackpackCode}
           />
 
-          {/*}
-          <TouchableOpacity
-            style={[styles.addButton, { backgroundColor: "#007bff", marginBottom: 10 }]}
-            onPress={() => setScanning(true)}
-          >
-            <Ionicons name="camera-outline" size={20} color="#fff" />
-            <Text style={[styles.addButtonText, { color: "#fff" }]}>ESCANEAR QR CODE</Text>
-          </TouchableOpacity>
-          {*/}
-
           <TouchableOpacity style={styles.addButton} onPress={handleAddBackpack}>
             <Text style={styles.addButtonText}>CADASTRAR</Text>
           </TouchableOpacity>

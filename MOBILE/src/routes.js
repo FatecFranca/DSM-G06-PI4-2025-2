@@ -10,7 +10,9 @@ import Profile from "./pages/profile";
 import Backpack from "./pages/backpack";
 import DeleteAccount from "./pages/deleteAccount";
 import Reports from "./pages/reports";
-import Graphics from "./pages/graphics";
+import ReportingOptions from "./pages/reportingOptions";
+import DailyReport from "./pages/dailyReport";
+import WeeklyReport from "./pages/weeklyReport";
 
 const Stack = createStackNavigator();
 
@@ -21,47 +23,57 @@ export default function Routes() {
                 <Stack.Screen
                     name="main"
                     component={Main}
-                    options={{ headerShown: false }} 
+                    options={{ headerShown: false }}
                 />
-                <Stack.Screen 
-                    name="login" 
-                    component={Login} 
-                    options={{ headerShown: false }} 
+                <Stack.Screen
+                    name="login"
+                    component={Login}
+                    options={{ headerShown: false }}
                 />
                 <Stack.Screen
                     name="register"
                     component={Register}
-                    options={{ headerShown: false }} 
+                    options={{ headerShown: false }}
                 />
                 <Stack.Screen
                     name="home"
                     component={Home}
-                    options={{ headerShown: false }} 
+                    options={{ headerShown: false }}
                 />
                 <Stack.Screen
                     name="profile"
                     component={Profile}
-                    options={{ headerShown: false }} 
+                    options={{ headerShown: false }}
                 />
                 <Stack.Screen
                     name="backpack"
                     component={Backpack}
-                    options={{ headerShown: false }} 
+                    options={{ headerShown: false }}
                 />
                 <Stack.Screen
                     name="reports"
                     component={Reports}
-                    options={{ headerShown: false }} 
+                    options={{ headerShown: false }}
                 />
                 <Stack.Screen
-                    name="graphics"
-                    component={Graphics}
-                    options={{ headerShown: false }} 
+                    name="reportingOptions"
+                    component={ReportingOptions}
+                    options={{ headerShown: false }}
+                />
+                <Stack.Screen
+                    name="dailyReport"
+                    component={DailyReport}
+                    options={{ headerShown: false }}
+                />
+                <Stack.Screen
+                    name="weeklyReport"
+                    component={WeeklyReport}
+                    options={{ headerShown: false }}
                 />
                 <Stack.Screen
                     name="deleteAccount"
                     component={DeleteAccount}
-                    options={{ headerShown: false }} 
+                    options={{ headerShown: false }}
                 />
             </Stack.Navigator>
         </NavigationContainer>

@@ -1,32 +1,12 @@
 import React, { useState, useEffect, useRef } from "react";
 
-import {
-    View,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    StyleSheet,
-    Platform,
-    ToastAndroid,
-    Keyboard,
-    KeyboardAvoidingView,
-    Modal, // Importação do Modal
-} from "react-native";
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Platform, ToastAndroid, Keyboard, KeyboardAvoidingView, Modal } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Picker } from "@react-native-picker/picker";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 
-import {
-    validarEmail,
-    validarSenha,
-    diferencaEntreDatas,
-    delay,
-    pegarTokens,
-    salvarTokens,
-    limparTokens,
-    obterDadosUsuario,
-} from "../utils/validacoes";
+import { validarEmail, validarSenha, diferencaEntreDatas, delay, pegarTokens, salvarTokens, limparTokens, obterDadosUsuario } from "../utils/validacoes";
 
 import BottomNav from "../components/BottomNav";
 import SettingsModal from "../components/SettingsModal";
@@ -34,16 +14,12 @@ import { LINKAPI, PORTAPI } from "../utils/global";
 
 export default function ProfileScreen({ navigation }) {
     const senhaAlteracaoRef = useRef(null);
-    // Ref para o input de senha dentro do Modal
-    const senhaExclusaoRef = useRef(null);
 
     const [settingsVisible, setSettingsVisible] = useState(false);
     const [darkTheme, setDarkTheme] = useState(false);
 
     // NOVO STATE PARA O MODAL DE EXCLUSÃO
     const [deleteModalVisible, setDeleteModalVisible] = useState(false);
-    // NOVO STATE PARA A SENHA DENTRO DO MODAL
-    const [senhaExclusao, setSenhaExclusao] = useState("");
 
     const [email, setEmail] = useState("");
     const [senha, setSenha] = useState(""); // Senha para alteração (opcional)
