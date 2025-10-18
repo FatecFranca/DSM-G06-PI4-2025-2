@@ -13,6 +13,8 @@ import Reports from "./pages/reports";
 import ReportingOptions from "./pages/reportingOptions";
 import DailyReport from "./pages/dailyReport";
 import WeeklyReport from "./pages/weeklyReport";
+import MonthlyReport from "./pages/monthlyReport";
+import AnnualReport from "./pages/annualReport";
 
 const Stack = createStackNavigator();
 
@@ -68,6 +70,16 @@ export default function Routes() {
                 <Stack.Screen
                     name="weeklyReport"
                     component={WeeklyReport}
+                    options={{ headerShown: false }}
+                />
+                <Stack.Screen
+                    name="monthlyReport"
+                    component={MonthlyReport}
+                    options={{ headerShown: false }}
+                />
+                <Stack.Screen
+                    name="annualReport"
+                    component={AnnualReport}
                     options={{ headerShown: false }}
                 />
                 <Stack.Screen

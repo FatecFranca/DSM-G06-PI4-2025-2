@@ -1,11 +1,5 @@
 import React, { useState } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-} from "react-native";
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
 import BottomNav from "../components/BottomNav";
@@ -18,12 +12,10 @@ export default function ReportingOptionsScreen({ navigation, route }) {
   const [darkTheme, setDarkTheme] = useState(false);
 
   const relatorios = [
-    { titulo: "Diário", rota: "dailyReport" },
-    { titulo: "Semanal", rota: "weeklyReport" },
-    { titulo: "Mensal", rota: "RelatorioMensal" },
-    { titulo: "Anual", rota: "RelatorioAnual" },
-    { titulo: "Por Período", rota: "RelatorioPorPeriodo" },
-    { titulo: "Dias de Maior e Menor Peso", rota: "RelatorioMaisMenosPeso" },
+    { titulo: "🕐 Diário", rota: "dailyReport" },
+    { titulo: "☀️ Semanal", rota: "weeklyReport" },
+    { titulo: "📈 Mensal", rota: "monthlyReport" },
+    { titulo: "📆 Anual", rota: "annualReport" },
   ];
 
   const handleNavegar = (rota) => {

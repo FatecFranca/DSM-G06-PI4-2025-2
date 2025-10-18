@@ -154,7 +154,7 @@ export async function validarTokens(tentativas, navigation) {
       response = await fetch(LINKAPI + PORTAPI + "/token/refresh", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token: "Bearer " + refreshToken }),
+        body: JSON.stringify({ token: refreshToken }),
         signal: controller.signal,
       });
 

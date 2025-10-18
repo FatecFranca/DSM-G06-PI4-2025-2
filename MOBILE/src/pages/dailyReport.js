@@ -274,7 +274,7 @@ export default function DailyReportScreen({ navigation, route }) {
         ) : (
           <>
             <Text style={styles.graphTitle}>
-              Média de Peso por Intervalo (3h)
+              📊 Média de Peso por Intervalo (3h)
             </Text>
             <LineChart
               data={chartData}
@@ -296,6 +296,71 @@ export default function DailyReportScreen({ navigation, route }) {
                 const horaSelecionada = horas[data.index];
                 setExpandedHour(expandedHour === horaSelecionada ? null : horaSelecionada);
               }}
+            />
+
+            <Text style={[styles.graphTitle, { marginTop: 25 }]}>
+              ⚖️ Comparativo Esquerda x Direita (3h)
+            </Text>
+
+            <LineChart
+              data={{
+                labels: horas,
+                datasets: [
+                  {
+                    // Linha da Esquerda
+                    data: horas.map((h, i) => {
+                      const key = `${(i * 3).toString().padStart(2, "0")}:00 - ${((i + 1) * 3)
+                        .toString()
+                        .padStart(2, "0")}:00`;
+                      const med = grupos[key];
+                      if (!med || med.length === 0) return 0;
+                      const esquerda = med.filter((m) =>
+                        m.MedicaoLocal?.toLowerCase().includes("esquerda")
+                      );
+                      const mediaEsq =
+                        esquerda.reduce((a, b) => a + Number(b.MedicaoPeso || 0), 0) /
+                        (esquerda.length || 1);
+                      return parseFloat(mediaEsq.toFixed(2));
+                    }),
+                    color: () => "#1976d2", // Azul: Esquerda
+                    strokeWidth: 2,
+                  },
+                  {
+                    // Linha da Direita
+                    data: horas.map((h, i) => {
+                      const key = `${(i * 3).toString().padStart(2, "0")}:00 - ${((i + 1) * 3)
+                        .toString()
+                        .padStart(2, "0")}:00`;
+                      const med = grupos[key];
+                      if (!med || med.length === 0) return 0;
+                      const direita = med.filter((m) =>
+                        m.MedicaoLocal?.toLowerCase().includes("direita")
+                      );
+                      const mediaDir =
+                        direita.reduce((a, b) => a + Number(b.MedicaoPeso || 0), 0) /
+                        (direita.length || 1);
+                      return parseFloat(mediaDir.toFixed(2));
+                    }),
+                    color: () => "#43a047", // Verde: Direita
+                    strokeWidth: 2,
+                  },
+                ],
+                legend: ["Esquerda", "Direita"],
+              }}
+              width={screenWidth - 20}
+              height={180}
+              yAxisSuffix="kg"
+              chartConfig={{
+                backgroundColor: "#fff",
+                backgroundGradientFrom: "#e0f7fa",
+                backgroundGradientTo: "#b2ebf2",
+                decimalPlaces: 1,
+                color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+                labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+                propsForDots: { r: "4", strokeWidth: "2" },
+                propsForBackgroundLines: { strokeDasharray: "3" },
+              }}
+              style={[styles.graph, { marginBottom: 10 }]}
             />
 
             {horas.map((h, i) => {
