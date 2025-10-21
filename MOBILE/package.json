@@ -21,6 +21,7 @@
     "expo": "54.0.13",
     "expo-camera": "~17.0.8",
     "expo-font": "~14.0.9",
+    "expo-notifications": "~0.32.12",
     "expo-secure-store": "^15.0.7",
     "expo-status-bar": "~3.0.8",
     "picker": "^0.1.4",

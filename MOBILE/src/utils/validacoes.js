@@ -127,7 +127,7 @@ export async function validarTokens(tentativas, navigation) {
       await limparTokens();
       navigation.reset({
         index: 0,
-        routes: [{ name: "main" }],
+        routes: [{ name: "login" }],
       });
       return 'false';
     }

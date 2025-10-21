@@ -1,16 +1,14 @@
 import React, { useEffect, useContext } from "react";
 import { View, Text, StyleSheet, Image, ActivityIndicator, ToastAndroid, BackHandler, Alert } from "react-native";
 import { delay } from "../utils/validacoes";
-//import { LINKAPI, PORTAPI } from "@env";
-import { LINKAPI, PORTAPI } from "../utils/global";
-import { pegarTokens, salvarTokens, limparTokens, validarTokens } from "../utils/validacoes";
+import { validarTokens } from "../utils/validacoes";
 
 export default function MainScreen({ navigation }) {
 
   const mostrarErroFatal = () => {
     Alert.alert(
       "Erro", // Título
-      "Erro ao conectar no servidor. \nVerifique sua conexão ou tente novamente mais tarde.", // Mensagem
+      "Erro ao conectar no servidor.\nVerifique sua conexão ou tente novamente mais tarde.", // Mensagem
       [
         {
           text: "OK",

@@ -40,6 +40,9 @@
     },
     "plugins": [
       "expo-font"
-    ]
+    ],
+    "cli": {
+      "appVersionSource": "remote"
+    }
   }
 }
