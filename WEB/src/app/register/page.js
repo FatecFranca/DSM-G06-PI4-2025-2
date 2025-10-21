@@ -288,7 +288,7 @@ export default function RegisterPage() {
 
         {/* Link de login */}
         <nav className="mt-6 text-center">
-          <Link href="/login" className="text-blue-600 hover:underline">
+          <Link href="/login" className="text-green-600 hover:underline">
             Já tem conta? Faça login.
           </Link>
         </nav>

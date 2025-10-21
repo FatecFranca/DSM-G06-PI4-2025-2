@@ -148,11 +148,11 @@ export default function BackpackPage() {
                   <div className="flex gap-2 mt-2 justify-center">
                     <span className="text-sm text-gray-600">
                       {m.UsoStatus === "Usando" ? (
-                        <span className="text-green-600">✅ Em uso</span>
+                        <span className="text-green-600">Em uso</span>
                       ) : m.UsoStatus === "Último a Usar" ? (
-                        <span className="text-yellow-600">⏸️ Último a usar</span>
+                        <span className="text-yellow-600">Último a usar</span>
                       ) : (
-                        <span className="text-gray-600">⏸️ Não está em uso</span>
+                        <span className="text-red-900">Não está em uso</span>
                       )}
                     </span>
                   </div>

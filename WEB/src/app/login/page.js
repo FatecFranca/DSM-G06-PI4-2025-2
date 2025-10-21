@@ -124,7 +124,7 @@ export default function LoginPage() {
         </form>
 
         <nav className="mt-6 text-center">
-          <Link href="/register" className="text-blue-600 hover:underline">
+          <Link href="/register" className="text-green-600 hover:underline">
             Não tem conta? Criar conta.
           </Link>
         </nav>
