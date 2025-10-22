@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ToastAndroid, ScrollView, RefreshControl, ActivityIndicator, Alert, Modal, Platform } from "react-native";
+import React, { useState, useEffect, useCallback } from "react";
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ToastAndroid, ScrollView, RefreshControl, ActivityIndicator, Alert, Modal } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
-import * as CameraModule from "expo-camera";
-const Camera = CameraModule.Camera; // <--- GARANTA QUE O COMPONENTE SEJA UM OBJETO DE COMPONENTE VÁLIDO
+// import * as CameraModule from "expo-camera";
+// const Camera = CameraModule.Camera; // <--- GARANTA QUE O COMPONENTE SEJA UM OBJETO DE COMPONENTE VÁLIDO
 
 import { LINKAPI, PORTAPI } from "../utils/global";
 import { validarTokens, pegarTokens } from "../utils/validacoes";
@@ -14,10 +14,10 @@ import BottomNav from "../components/BottomNav";
 import SettingsModal from "../components/SettingsModal";
 
 export default function BackpackScreen({ navigation }) {
-  const [hasPermission, setHasPermission] = useState(null);
-  const [scanning, setScanning] = useState(false);
-  const [scanned, setScanned] = useState(false);
-  const cameraRef = useRef(null);
+  // const [hasPermission, setHasPermission] = useState(null);
+  // const [scanning, setScanning] = useState(false);
+  // const [scanned, setScanned] = useState(false);
+  // const cameraRef = useRef(null);
 
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [selectedBackpack, setSelectedBackpack] = useState(null);
@@ -200,12 +200,14 @@ export default function BackpackScreen({ navigation }) {
     fetchUserBackpacks();
   }, [fetchUserBackpacks]);
 
+  /*
   useEffect(() => {
     (async () => {
       const { status } = await Camera.requestCameraPermissionsAsync();
       setHasPermission(status === "granted");
     })();
   }, []);
+  */
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
