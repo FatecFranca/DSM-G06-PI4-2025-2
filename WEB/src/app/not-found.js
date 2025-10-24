@@ -61,7 +61,7 @@ export default function NotFound() {
             <Link
               href="/home"
               rel="noreferrer noopener"
-              className="uppercase no-underline bg-[#7DFA48] text-[hsl(0,0%,4%)] py-4 px-16 rounded-full text-sm tracking-[0.05rem] inline-block"
+              className="uppercase no-underline bg-[#7DFA48] text-black  py-4 px-16 rounded-full text-bold tracking-[0.05rem] inline-block"
             >
               Ínicio
             </Link>

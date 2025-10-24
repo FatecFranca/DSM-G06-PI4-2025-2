@@ -1,4 +1,3 @@
-// components/Card/Card.js
 export default function Card({ title, description, extra, children }) {
   return (
     <div className="bg-gray-100 rounded-2xl shadow-md p-4 w-full max-w-md text-center hover:scale-102 hover:bg-gray-200 transition-transform duration-700">
