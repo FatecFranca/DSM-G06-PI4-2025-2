@@ -1,4 +1,3 @@
-// components/BackPackForm/BackpackForm.js
 "use client";
 import { useState } from "react";
 

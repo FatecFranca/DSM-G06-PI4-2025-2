@@ -1,4 +1,3 @@
-// src/app/reports/[mochilaCodigo]/monthly/page.js
 "use client";
 
 import React from "react";

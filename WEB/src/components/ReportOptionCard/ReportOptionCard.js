@@ -1,4 +1,3 @@
-// src/app/reports/components/ReportOptionCard.js
 import Link from 'next/link';
 import React from 'react';
 

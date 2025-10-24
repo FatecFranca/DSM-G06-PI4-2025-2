@@ -1,4 +1,3 @@
-// pages/404.js
 "use client";
 
 import Head from "next/head";

@@ -1,22 +1,17 @@
-// src/app/reports/[mochilaCodigo]/weekly/page.js
 "use client";
 
 import React from "react";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { FiArrowLeft } from "react-icons/fi";
-// --- IMPORTAÇÃO ADICIONADA ---
 import { useAuth } from "@/app/hooks/useAuth";
-// --- FIM DA IMPORTAÇÃO ---
 import ProtectedRoute from "@/components/ProtectedRoutes/ProtectedRoute";
 import Header from "@/components/Header/Header";
-import Chart from "@/components/Chart/Chart"; // Certifique-se do caminho correto
+import Chart from "@/components/Chart/Chart";
 
 export default function WeeklyReportPage({ params }) {
   const router = useRouter();
-  // --- LINHA ADICIONADA ---
   const { authFetch } = useAuth(); // Obtém authFetch do contexto de autenticação
-  // --- FIM DA LINHA ADICIONADA ---
 
   // Use React.use para resolver a Promise `params` (conforme o aviso anterior)
   const resolvedParams = React.use(params);
