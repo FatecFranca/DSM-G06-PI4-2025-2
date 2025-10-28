@@ -27,8 +27,15 @@
       "edgeToEdgeEnabled": true,
       "package": "com.luispedrocarrocini.mochilainteligente",
       "permissions": [
-        "CAMERA"
-      ]
+        "RECEIVE_BOOT_COMPLETED",
+        "FOREGROUND_SERVICE",
+        "WAKE_LOCK",
+        "POST_NOTIFICATIONS"
+      ],
+      "foregroundService": {
+        "notificationTitle": "Monitoramento em andamento",
+        "notificationBody": "O app está executando tarefas em segundo plano."
+      }
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -39,7 +46,8 @@
       }
     },
     "plugins": [
-      "expo-font"
+      "expo-font",
+      "expo-background-task"
     ],
     "cli": {
       "appVersionSource": "remote"

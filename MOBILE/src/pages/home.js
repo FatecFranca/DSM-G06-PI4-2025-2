@@ -37,10 +37,13 @@ export default function HomeScreen({ navigation }) {
   const [mostrarTela, setMostrarTela] = useState(false);
   const [corTextoCirculo, setCorTextoCirculo] = useState('');
 
+  /*
   useEffect(() => {
     solicitarPermissaoNotificacao();
   }, []);
+  */
 
+  /*
   const [notificacaoEnviada, setNotificacaoEnviada] = useState(false);
 
   useEffect(() => {
@@ -54,7 +57,7 @@ export default function HomeScreen({ navigation }) {
       setNotificacaoEnviada(false); // reseta quando voltar ao normal
     }
   }, [pesoTotal, pesoMaximo]);
-
+  */
 
   const TEMPO_ATUALIZACAO_MS = 20000;
   useEffect(() => {
