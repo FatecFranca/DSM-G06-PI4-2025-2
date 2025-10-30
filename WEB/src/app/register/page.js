@@ -13,7 +13,7 @@ export default function RegisterPage() {
     UsuarioPeso: "",
     UsuarioAltura: "",
     UsuarioDtNascimento: "",
-    UsuarioSexo: "Prefiro não dizer",
+    UsuarioSexo: "",
   });
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
@@ -151,11 +151,12 @@ export default function RegisterPage() {
         <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
           {/* Nome */}
           <div>
-            <label htmlFor="UsuarioNome" className="sr-only">Nome</label>
+            <label htmlFor="UsuarioDtNascimento" className="block text-sm text-gray-600 mb-1">Nome</label>
+
             <input
               id="UsuarioNome"
               name="UsuarioNome"
-              placeholder="Qual seu nome?"
+              placeholder="Digite o nome completo"
               className={`w-full p-3 rounded-3xl bg-green-100 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 ${
                 errors.UsuarioNome ? "ring-2 ring-red-500" : ""
               }`}
@@ -167,11 +168,12 @@ export default function RegisterPage() {
 
           {/* E-mail */}
           <div>
-            <label htmlFor="UsuarioEmail" className="sr-only">E-mail</label>
+            <label htmlFor="UsuarioDtNascimento" className="block text-sm text-gray-600 mb-1">Email</label>
+
             <input
               id="UsuarioEmail"
               name="UsuarioEmail"
-              placeholder="Qual seu melhor e-mail?"
+              placeholder="Digite seu e-mail"
               type="email"
               className={`w-full p-3 rounded-3xl bg-green-100 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 ${
                 errors.UsuarioEmail ? "ring-2 ring-red-500" : ""
@@ -184,11 +186,12 @@ export default function RegisterPage() {
 
           {/* Senha */}
           <div>
-            <label htmlFor="UsuarioSenha" className="sr-only">Senha</label>
+            <label htmlFor="UsuarioDtNascimento" className="block text-sm text-gray-600 mb-1">Senha</label>
+
             <input
               id="UsuarioSenha"
               name="UsuarioSenha"
-              placeholder="Crie uma senha forte!"
+              placeholder="Crie uma senha"
               type="password"
               className={`w-full p-3 rounded-3xl bg-green-100 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 ${
                 errors.UsuarioSenha ? "ring-2 ring-red-500" : ""
@@ -202,7 +205,8 @@ export default function RegisterPage() {
           {/* Peso e Altura */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
-              <label htmlFor="UsuarioPeso" className="sr-only">Peso (kg)</label>
+              <label htmlFor="UsuarioDtNascimento" className="block text-sm text-gray-600 mb-1">Peso</label>
+
               <input
                 id="UsuarioPeso"
                 name="UsuarioPeso"
@@ -219,7 +223,8 @@ export default function RegisterPage() {
               {errors.UsuarioPeso && <p className="text-red-600 text-sm mt-1">{errors.UsuarioPeso}</p>}
             </div>
             <div>
-              <label htmlFor="UsuarioAltura" className="sr-only">Altura (m)</label>
+              <label htmlFor="UsuarioDtNascimento" className="block text-sm text-gray-600 mb-1">Altura</label>
+
               <input
                 id="UsuarioAltura"
                 name="UsuarioAltura"
@@ -239,7 +244,8 @@ export default function RegisterPage() {
 
           {/* Data de Nascimento */}
           <div>
-            <label htmlFor="UsuarioDtNascimento" className="sr-only">Data de nascimento</label>
+            <label htmlFor="UsuarioDtNascimento" className="block text-sm text-gray-600 mb-1">Data de nascimento</label>
+
             <input
               id="UsuarioDtNascimento"
               name="UsuarioDtNascimento"
@@ -255,7 +261,8 @@ export default function RegisterPage() {
 
           {/* Sexo */}
           <div>
-            <label htmlFor="UsuarioSexo" className="sr-only">Sexo</label>
+            <label htmlFor="UsuarioDtNascimento" className="block text-sm text-gray-600 mb-1">Sexo</label>
+
             <select
               id="UsuarioSexo"
               name="UsuarioSexo"
