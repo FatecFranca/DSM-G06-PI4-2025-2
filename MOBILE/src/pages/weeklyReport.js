@@ -68,7 +68,8 @@ export default function WeeklyReportScreen({ navigation, route }) {
 
   useEffect(() => {
     buscarRelatorioSemanal();
-  }, [selectedWeek]);
+  }, [selectedWeek, modoGeral]);
+
 
   const handleWeekChange = (event, date) => {
     setShowDatePicker(false);
@@ -90,16 +91,32 @@ export default function WeeklyReportScreen({ navigation, route }) {
       const tokens = await pegarTokens();
       const { accessToken } = tokens;
 
-      const response = await fetch(
-        `${LINKAPI}${PORTAPI}/medicoes/semanal/${codigo}`,
-        {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${accessToken}`,
-          },
-        }
-      );
+      let url = "";
+
+      if (modoGeral) {
+        // 🔹 Modo Relatório Geral → usa a rota antiga
+        url = `${LINKAPI}${PORTAPI}/medicoes/semanal/${codigo}`;
+      } else {
+        // 🔹 Modo Semana Selecionada → usa a nova rota /periodo/:inicio/:fim/:mochila
+        const inicio = format(
+          startOfWeek(selectedWeek, { locale: ptBR }),
+          "yyyy-MM-dd"
+        );
+        const fim = format(
+          endOfWeek(selectedWeek, { locale: ptBR }),
+          "yyyy-MM-dd"
+        );
+
+        url = `${LINKAPI}${PORTAPI}/medicoes/periodo/${inicio}/${fim}/${codigo}`;
+      }
+
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
 
       if (!response.ok) {
         const erroData = await response.json();
@@ -108,7 +125,6 @@ export default function WeeklyReportScreen({ navigation, route }) {
       }
 
       const dados = await response.json();
-
       setMedicoes(dados || []);
     } catch (e) {
       console.error(e);
@@ -117,6 +133,7 @@ export default function WeeklyReportScreen({ navigation, route }) {
       setLoading(false);
     }
   };
+
 
   const localSide = (local) => {
     if (!local) return "outro";

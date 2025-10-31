@@ -1,5 +1,15 @@
-import React, { useState, useEffect } from "react";
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, ToastAndroid } from "react-native";
+import React, { useState, useEffect, useRef } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  ActivityIndicator,
+  ToastAndroid,
+  Animated,
+  Easing,
+} from "react-native";
 import { LineChart } from "react-native-chart-kit";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { Dimensions } from "react-native";
@@ -31,6 +41,13 @@ export default function DailyReportScreen({ navigation, route }) {
   // Variáveis de estado para o peso e a porcentagem máxima
   const [pesoUsuario, setPesoUsuario] = useState(0);
   const [porcentagemMaxima, setPorcentagemMaxima] = useState(10); // Valor padrão
+
+  // Estatísticas do dia
+  const [estatisticas, setEstatisticas] = useState(null);
+
+  // Controle do bloco expansível de indicadores
+  const [statsExpanded, setStatsExpanded] = useState(true);
+  const animVal = useRef(new Animated.Value(1)).current; // 1 = aberto, 0 = fechado
 
   useEffect(() => {
     bucarDados();
@@ -73,11 +90,57 @@ export default function DailyReportScreen({ navigation, route }) {
     if (date) setSelectedDate(date);
   };
 
+  // Função auxiliar para calcular estatísticas
+  const calcularEstatisticas = (valoresRaw) => {
+    const valores = valoresRaw.filter((v) => typeof v === "number" && !isNaN(v));
+    if (!valores.length) return null;
+
+    const n = valores.length;
+    const somatorio = valores.reduce((a, b) => a + b, 0);
+    const media = somatorio / n;
+
+    const sorted = [...valores].sort((a, b) => a - b);
+    const mediana = n % 2 === 0 ? (sorted[n / 2 - 1] + sorted[n / 2]) / 2 : sorted[Math.floor(n / 2)];
+
+    // Moda (pode haver mais de uma)
+    const freq = {};
+    valores.forEach((v) => {
+      const key = roundTo2(v).toString(); // agrupar por valor arredondado a 2 decimais para moda mais útil
+      freq[key] = (freq[key] || 0) + 1;
+    });
+    const maxFreq = Math.max(...Object.values(freq));
+    const modaArray = Object.keys(freq).filter((k) => freq[k] === maxFreq).map((k) => Number(k));
+
+    // Variância (populacional) e desvio padrão
+    const variancia = valores.reduce((a, b) => a + Math.pow(b - media, 2), 0) / n;
+    const desvioPadrao = Math.sqrt(variancia);
+
+    // Tratar caso desvio seja zero (evita divisão por zero)
+    const denomSkew = desvioPadrao === 0 ? 1 : Math.pow(desvioPadrao, 3);
+    const denomKurt = desvioPadrao === 0 ? 1 : Math.pow(desvioPadrao, 4);
+
+    // Assimetria (Fisher-Pearson sample skewness could be used, but we'll use population skewness)
+    const assimetria = (valores.reduce((a, b) => a + Math.pow(b - media, 3), 0) / n) / denomSkew;
+
+    // Curtose (excesso de curtose: kurtosis - 3)
+    const curtose = (valores.reduce((a, b) => a + Math.pow(b - media, 4), 0) / n) / denomKurt - 3;
+
+    return {
+      media: roundTo2(media),
+      mediana: roundTo2(mediana),
+      moda: modaArray.length ? modaArray.join(", ") : "—",
+      desvioPadrao: roundTo2(desvioPadrao),
+      assimetria: roundTo2(assimetria),
+      curtose: roundTo2(curtose),
+    };
+  };
+
   const buscarRelatorio = async () => {
     try {
       setLoading(true);
       setErro("");
       setMedicoes([]);
+      setEstatisticas(null);
 
       const resposta = await validarTokens(0, navigation);
       if (resposta !== "true") {
@@ -108,6 +171,34 @@ export default function DailyReportScreen({ navigation, route }) {
 
       const dados = await response.json();
       setMedicoes(dados);
+
+      // --- calcular totais por timestamp (hora:minuto) somando esquerda + direita (média por lado)
+      const mapaHoraMinuto = {};
+      dados.forEach((item) => {
+        const d = new Date(item.MedicaoData);
+        const hora = d.getHours().toString().padStart(2, "0");
+        const minuto = d.getMinutes().toString().padStart(2, "0");
+        const chave = `${hora}:${minuto}`;
+
+        if (!mapaHoraMinuto[chave]) mapaHoraMinuto[chave] = [];
+        mapaHoraMinuto[chave].push(item);
+      });
+
+      const totais = Object.values(mapaHoraMinuto).map((lista) => {
+        const esquerda = lista.filter((v) => v.MedicaoLocal?.toLowerCase().includes("esquerda"));
+        const direita = lista.filter((v) => v.MedicaoLocal?.toLowerCase().includes("direita"));
+
+        const pesoEsq =
+          esquerda.reduce((acc, v) => acc + Number(v.MedicaoPeso || 0), 0) / (esquerda.length || 1);
+        const pesoDir =
+          direita.reduce((acc, v) => acc + Number(v.MedicaoPeso || 0), 0) / (direita.length || 1);
+
+        return roundTo2(pesoEsq + pesoDir);
+      });
+
+      const stats = calcularEstatisticas(totais);
+      setEstatisticas(stats);
+
     } catch (e) {
       console.error(e);
       setErro("Erro ao conectar no servidor.");
@@ -220,6 +311,24 @@ export default function DailyReportScreen({ navigation, route }) {
   // Cálculo do limite máximo de peso
   const pesoMaximoPermitido = pesoUsuario * (porcentagemMaxima / 100);
 
+  // Toggle do bloco de indicadores com animação
+  const toggleStats = () => {
+    const toValue = statsExpanded ? 0 : 1;
+    Animated.timing(animVal, {
+      toValue,
+      duration: 300,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: false,
+    }).start();
+    setStatsExpanded(!statsExpanded);
+  };
+
+  const animatedHeight = animVal.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 180], // altura do bloco (ajuste se precisar)
+  });
+  const animatedOpacity = animVal;
+
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={{ paddingBottom: 120 }}>
@@ -273,8 +382,51 @@ export default function DailyReportScreen({ navigation, route }) {
           </Text>
         ) : (
           <>
+            {/* Bloco expansível de indicadores estatísticos (cards) */}
+            <View style={styles.statsOuter}>
+              <TouchableOpacity style={styles.statsHeader} onPress={toggleStats} activeOpacity={0.8}>
+                <Text style={styles.statsHeaderText}>📈 Indicadores Estatísticos</Text>
+                <Text style={styles.statsHeaderToggle}>{statsExpanded ? "Ocultar" : "Mostrar"}</Text>
+              </TouchableOpacity>
+
+              <Animated.View style={[styles.statsAnimated, { height: animatedHeight, opacity: animatedOpacity }]}>
+                <ScrollView horizontal contentContainerStyle={styles.statsGrid} showsHorizontalScrollIndicator={false}>
+                  {/* Cada card representa uma métrica */}
+                  <View style={[styles.statCard, { borderLeftColor: "#4CAF50" }]}>
+                    <Text style={styles.statCardTitle}>Média</Text>
+                    <Text style={styles.statCardValue}>{estatisticas?.media ?? "—"} kg</Text>
+                  </View>
+
+                  <View style={[styles.statCard, { borderLeftColor: "#2196F3" }]}>
+                    <Text style={styles.statCardTitle}>Mediana</Text>
+                    <Text style={styles.statCardValue}>{estatisticas?.mediana ?? "—"} kg</Text>
+                  </View>
+
+                  <View style={[styles.statCard, { borderLeftColor: "#9C27B0" }]}>
+                    <Text style={styles.statCardTitle}>Moda</Text>
+                    <Text style={styles.statCardValue}>{estatisticas?.moda ?? "—"} kg</Text>
+                  </View>
+
+                  <View style={[styles.statCard, { borderLeftColor: "#FF9800" }]}>
+                    <Text style={styles.statCardTitle}>Desvio Padrão</Text>
+                    <Text style={styles.statCardValue}>{estatisticas?.desvioPadrao ?? "—"} kg</Text>
+                  </View>
+
+                  <View style={[styles.statCard, { borderLeftColor: "#F44336" }]}>
+                    <Text style={styles.statCardTitle}>Assimetria</Text>
+                    <Text style={styles.statCardValue}>{estatisticas?.assimetria ?? "—"}</Text>
+                  </View>
+
+                  <View style={[styles.statCard, { borderLeftColor: "#607D8B" }]}>
+                    <Text style={styles.statCardTitle}>Curtose</Text>
+                    <Text style={styles.statCardValue}>{estatisticas?.curtose ?? "—"}</Text>
+                  </View>
+                </ScrollView>
+              </Animated.View>
+            </View>
+
             <Text style={styles.graphTitle}>
-              📊 Média de Peso por Intervalo (3h)
+              {"\n"}📊 Média de Peso por Intervalo (3h)
             </Text>
             <LineChart
               data={chartData}
@@ -362,6 +514,10 @@ export default function DailyReportScreen({ navigation, route }) {
               }}
               style={[styles.graph, { marginBottom: 10 }]}
             />
+
+            <Text style={styles.graphTitle}>
+              {"\n"}Detalhes das Medições (3 em 3 horas)
+            </Text>
 
             {horas.map((h, i) => {
               const key = `${(i * 3).toString().padStart(2, "0")}:00 - ${((i + 1) * 3)
@@ -672,4 +828,62 @@ const styles = StyleSheet.create({
   bold: { fontWeight: "bold" },
   bottomContainer: { position: "absolute", bottom: 0, left: 0, right: 0 },
   backButton: { position: "absolute", top: 40, left: 20 },
+
+  // ESTILOS PARA BLOCO DE INDICADORES
+  statsOuter: {
+    marginHorizontal: 10,
+    marginTop: 10,
+    borderRadius: 12,
+    overflow: "hidden",
+    backgroundColor: "#ffffff",
+    borderWidth: 1,
+    borderColor: "#d0d7d7",
+  },
+  statsHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    backgroundColor: "#e8f5e9",
+  },
+  statsHeaderText: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#2e7d32",
+  },
+  statsHeaderToggle: {
+    fontSize: 14,
+    color: "#2e7d32",
+  },
+  statsAnimated: {
+    // height controlado pela animação
+    paddingVertical: 8,
+  },
+  statsGrid: {
+    paddingHorizontal: 10,
+    alignItems: "center",
+  },
+  statCard: {
+    backgroundColor: "#fff",
+    width: 150,
+    marginRight: 10,
+    borderRadius: 10,
+    padding: 10,
+    elevation: 2,
+    borderLeftWidth: 6,
+    borderLeftColor: "#4CAF50",
+  },
+  statCardTitle: {
+    fontSize: 13,
+    color: "#333",
+    fontWeight: "600",
+    marginBottom: 6,
+  },
+  statCardValue: {
+    fontSize: 16,
+    color: "#111",
+    fontWeight: "700",
+  },
+  // FIM ESTILOS INDICADORES
 });

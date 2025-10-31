@@ -5,7 +5,7 @@ import { Appearance } from "react-native";
 import * as TaskManager from "expo-task-manager";
 import * as BackgroundFetch from "expo-background-fetch";
 import * as Notifications from "expo-notifications";
-import { TASK_NAME } from "./tasks/backgroundTask";
+import { TASK_NAME } from "./src/tasks/backgroundTask";
 
 
 // Solicitar permissão de notificação
