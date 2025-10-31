@@ -417,7 +417,7 @@ export default function MonthlyReportScreen({ navigation, route }) {
 
   const animatedHeight = animVal.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, 180], 
+    outputRange: [0, 140], 
   });
   const animatedOpacity = animVal;
 
@@ -448,21 +448,21 @@ export default function MonthlyReportScreen({ navigation, route }) {
     return (
       <View style={styles.statsOuter}>
         <TouchableOpacity style={styles.statsHeader} onPress={toggleStats} activeOpacity={0.8}>
-          <Text style={styles.statsHeaderText}>📈 Indicadores Estatísticos Mensais</Text>
+          <Text style={styles.statsHeaderText}>📈 Indicadores Estatísticos</Text>
           <Text style={styles.statsHeaderToggle}>{statsExpanded ? "Ocultar" : "Mostrar"}</Text>
         </TouchableOpacity>
 
         <Animated.View style={[styles.statsAnimated, { height: animatedHeight, opacity: animatedOpacity }]}>
           <ScrollView horizontal contentContainerStyle={styles.statsGrid} showsHorizontalScrollIndicator={false}>
             {renderStatCard(
-              "Total de Medições",
+              "Total Medições",
               `${totalMedicoes}`,
               "#2196F3", 
               "📝"
             )}
             
             {renderStatCard(
-              "Dias com Medição",
+              "Dias c/ Medição",
               `${diasComMedicao}`,
               "#4CAF50", 
               "📅"

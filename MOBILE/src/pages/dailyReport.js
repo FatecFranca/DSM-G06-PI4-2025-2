@@ -325,7 +325,7 @@ export default function DailyReportScreen({ navigation, route }) {
 
   const animatedHeight = animVal.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, 180], // altura do bloco (ajuste se precisar)
+    outputRange: [0, 140], // altura do bloco (ajuste se precisar)
   });
   const animatedOpacity = animVal;
 

@@ -300,7 +300,7 @@ export default function AnnualReportScreen({ navigation, route }) {
     return (
       <View style={styles.statsOuter}>
         <TouchableOpacity style={styles.statsHeader} onPress={toggleStats} activeOpacity={0.8}>
-          <Text style={styles.statsHeaderText}>📈 Indicadores Estatísticos Anuais</Text>
+          <Text style={styles.statsHeaderText}>📈 Indicadores Estatísticos</Text>
           <Text style={styles.statsHeaderToggle}>{statsExpanded ? "Ocultar" : "Mostrar"}</Text>
         </TouchableOpacity>
 

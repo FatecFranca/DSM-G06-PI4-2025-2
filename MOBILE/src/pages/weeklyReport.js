@@ -1,14 +1,36 @@
-import React, { useEffect, useState } from "react";
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, ToastAndroid, } from "react-native";
+import React, { useEffect, useState, useRef } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  ActivityIndicator,
+  ToastAndroid,
+  Animated,
+  Easing,
+} from "react-native";
 import { LineChart } from "react-native-chart-kit";
 import { Dimensions } from "react-native";
 import DateTimePicker from "@react-native-community/datetimepicker";
-import { format, startOfWeek, endOfWeek, isWithinInterval, parseISO, parseISO as parseISO2, } from "date-fns";
+import {
+  format,
+  startOfWeek,
+  endOfWeek,
+  isWithinInterval,
+  parseISO,
+  parseISO as parseISO2,
+} from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Ionicons } from "@expo/vector-icons";
 
 import { LINKAPI, PORTAPI } from "../utils/global";
-import { validarTokens, pegarTokens, obterDadosUsuario } from "../utils/validacoes";
+import {
+  validarTokens,
+  pegarTokens,
+  obterDadosUsuario,
+  roundTo2,
+} from "../utils/validacoes";
 
 import BottomNav from "../components/BottomNav";
 import SettingsModal from "../components/SettingsModal";
@@ -35,6 +57,13 @@ export default function WeeklyReportScreen({ navigation, route }) {
   const [pesoUsuario, setPesoUsuario] = useState(0);
   const [porcentagemMaxima, setPorcentagemMaxima] = useState(10); // Valor padrão
 
+  // Estatísticas do período (NOVO)
+  const [estatisticas, setEstatisticas] = useState(null);
+
+  // Controle do bloco expansível de indicadores (NOVO)
+  const [statsExpanded, setStatsExpanded] = useState(true);
+  const animVal = useRef(new Animated.Value(1)).current; // 1 = aberto, 0 = fechado
+
   useEffect(() => {
     bucarDados();
   }, []);
@@ -47,8 +76,9 @@ export default function WeeklyReportScreen({ navigation, route }) {
       // Atualiza os estados com os dados do usuário
       // Utiliza fallback de 70kg e 10% caso os valores não existam
       setPesoUsuario(response.usuario.UsuarioPeso || 70);
-      setPorcentagemMaxima(response.usuario.UsuarioPesoMaximoPorcentagem || 10);
-
+      setPorcentagemMaxima(
+        response.usuario.UsuarioPesoMaximoPorcentagem || 10
+      );
     } catch (error) {
       if (error.name === "AbortError") {
         ToastAndroid.show("Servidor demorou a responder", ToastAndroid.SHORT);
@@ -70,7 +100,6 @@ export default function WeeklyReportScreen({ navigation, route }) {
     buscarRelatorioSemanal();
   }, [selectedWeek, modoGeral]);
 
-
   const handleWeekChange = (event, date) => {
     setShowDatePicker(false);
     if (date) setSelectedWeek(date);
@@ -81,6 +110,7 @@ export default function WeeklyReportScreen({ navigation, route }) {
       setLoading(true);
       setErro("");
       setMedicoes([]);
+      setEstatisticas(null);
 
       const resposta = await validarTokens(0, navigation);
       if (resposta !== "true") {
@@ -94,7 +124,7 @@ export default function WeeklyReportScreen({ navigation, route }) {
       let url = "";
 
       if (modoGeral) {
-        // 🔹 Modo Relatório Geral → usa a rota antiga
+        // 🔹 Modo Última Semana → usa a rota antiga
         url = `${LINKAPI}${PORTAPI}/medicoes/semanal/${codigo}`;
       } else {
         // 🔹 Modo Semana Selecionada → usa a nova rota /periodo/:inicio/:fim/:mochila
@@ -126,6 +156,39 @@ export default function WeeklyReportScreen({ navigation, route }) {
 
       const dados = await response.json();
       setMedicoes(dados || []);
+
+      // --- NOVO: calcular indicadores estatísticos a partir das medições retornadas
+      // Vamos agrupar por minuto (hh:mm) e calcular a média esquerda + direita por minuto — igual abordagem do relatório diário
+      const minuteMap = {};
+      (dados || []).forEach((m) => {
+        try {
+          const dt = new Date(m.MedicaoData);
+          const hh = String(dt.getHours()).padStart(2, "0");
+          const mm = String(dt.getMinutes()).padStart(2, "0");
+          const key = `${hh}:${mm}`;
+          if (!minuteMap[key]) minuteMap[key] = { left: [], right: [], raw: [] };
+
+          const local = (m.MedicaoLocal || "").toString().toLowerCase();
+          if (local.includes("esquer")) minuteMap[key].left.push(Number(m.MedicaoPeso || 0));
+          else if (local.includes("direit")) minuteMap[key].right.push(Number(m.MedicaoPeso || 0));
+          else if (local.includes("amb") || local.includes("cent")) {
+            minuteMap[key].left.push(Number(m.MedicaoPeso || 0));
+            minuteMap[key].right.push(Number(m.MedicaoPeso || 0));
+          } else minuteMap[key].raw.push(Number(m.MedicaoPeso || 0));
+        } catch (e) {
+          // ignore malformed dates
+        }
+      });
+
+      const totals = Object.keys(minuteMap).map((k) => {
+        const obj = minuteMap[k];
+        const avgLeft = obj.left.length ? obj.left.reduce((a, b) => a + b, 0) / obj.left.length : 0;
+        const avgRight = obj.right.length ? obj.right.reduce((a, b) => a + b, 0) / obj.right.length : 0;
+        return roundTo2((avgLeft || 0) + (avgRight || 0));
+      });
+
+      const stats = calcularEstatisticas(totals);
+      setEstatisticas(stats);
     } catch (e) {
       console.error(e);
       setErro("Erro ao conectar ao servidor.");
@@ -133,7 +196,6 @@ export default function WeeklyReportScreen({ navigation, route }) {
       setLoading(false);
     }
   };
-
 
   const localSide = (local) => {
     if (!local) return "outro";
@@ -145,6 +207,47 @@ export default function WeeklyReportScreen({ navigation, route }) {
     return "outro";
   };
 
+  // --- Função calcularEstatisticas (copiada/adaptada do relatório diário)
+  const calcularEstatisticas = (valoresRaw) => {
+    const valores = valoresRaw.filter((v) => typeof v === "number" && !isNaN(v));
+    if (!valores.length) return null;
+
+    const n = valores.length;
+    const somatorio = valores.reduce((a, b) => a + b, 0);
+    const media = somatorio / n;
+
+    const sorted = [...valores].sort((a, b) => a - b);
+    const mediana = n % 2 === 0 ? (sorted[n / 2 - 1] + sorted[n / 2]) / 2 : sorted[Math.floor(n / 2)];
+
+    // Moda (pode haver mais de uma) — agrupar por valor arredondado a 2 decimais
+    const freq = {};
+    valores.forEach((v) => {
+      const key = roundTo2(v).toString();
+      freq[key] = (freq[key] || 0) + 1;
+    });
+    const maxFreq = Math.max(...Object.values(freq));
+    const modaArray = Object.keys(freq).filter((k) => freq[k] === maxFreq).map((k) => Number(k));
+
+    // Variância (populacional) e desvio padrão
+    const variancia = valores.reduce((a, b) => a + Math.pow(b - media, 2), 0) / n;
+    const desvioPadrao = Math.sqrt(variancia);
+
+    // Prevenir divisão por zero ao calcular assimetria/curtose
+    const denomSkew = desvioPadrao === 0 ? 1 : Math.pow(desvioPadrao, 3);
+    const denomKurt = desvioPadrao === 0 ? 1 : Math.pow(desvioPadrao, 4);
+
+    const assimetria = (valores.reduce((a, b) => a + Math.pow(b - media, 3), 0) / n) / denomSkew;
+    const curtose = (valores.reduce((a, b) => a + Math.pow(b - media, 4), 0) / n) / denomKurt - 3;
+
+    return {
+      media: roundTo2(media),
+      mediana: roundTo2(mediana),
+      moda: modaArray.length ? modaArray.join(", ") : "—",
+      desvioPadrao: roundTo2(desvioPadrao),
+      assimetria: roundTo2(assimetria),
+      curtose: roundTo2(curtose),
+    };
+  };
 
   const groupByDaySorted = (lista) => {
     const map = {};
@@ -319,6 +422,23 @@ export default function WeeklyReportScreen({ navigation, route }) {
 
   const hasValidChart = chartValues.length > 0 && chartValues.some(v => v > 0);
 
+  const toggleStats = () => {
+    const toValue = statsExpanded ? 0 : 1;
+    Animated.timing(animVal, {
+      toValue,
+      duration: 300,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: false,
+    }).start();
+    setStatsExpanded(!statsExpanded);
+  };
+
+  const animatedHeight = animVal.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 140], // altura do bloco (ajuste se precisar)
+  });
+  const animatedOpacity = animVal;
+
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={{ paddingBottom: 140 }}>
@@ -358,7 +478,50 @@ export default function WeeklyReportScreen({ navigation, route }) {
           <Text style={styles.infoText}>Nenhuma medição encontrada.</Text>
         ) : (
           <>
-            <Text style={styles.graphTitle}>{modoGeral ? "📊 Média Semanal por Dia\n(Todas as semanas)" : "📊 Média Total Diária\n(Semana Selecionada"}</Text>
+            {/* --- BLOCO DE INDICADORES (ADICIONADO) --- */}
+            <View style={styles.statsOuter}>
+              <TouchableOpacity style={styles.statsHeader} onPress={toggleStats} activeOpacity={0.8}>
+                <Text style={styles.statsHeaderText}>📈 Indicadores Estatísticos</Text>
+                <Text style={styles.statsHeaderToggle}>{statsExpanded ? "Ocultar" : "Mostrar"}</Text>
+              </TouchableOpacity>
+
+              <Animated.View style={[styles.statsAnimated, { height: animatedHeight, opacity: animatedOpacity }]}>
+                <ScrollView horizontal contentContainerStyle={styles.statsGrid} showsHorizontalScrollIndicator={false}>
+                  <View style={[styles.statCard, { borderLeftColor: "#4CAF50" }]}>
+                    <Text style={styles.statCardTitle}>Média</Text>
+                    <Text style={styles.statCardValue}>{estatisticas?.media ?? "—"} kg</Text>
+                  </View>
+
+                  <View style={[styles.statCard, { borderLeftColor: "#2196F3" }]}>
+                    <Text style={styles.statCardTitle}>Mediana</Text>
+                    <Text style={styles.statCardValue}>{estatisticas?.mediana ?? "—"} kg</Text>
+                  </View>
+
+                  <View style={[styles.statCard, { borderLeftColor: "#9C27B0" }]}>
+                    <Text style={styles.statCardTitle}>Moda</Text>
+                    <Text style={styles.statCardValue}>{estatisticas?.moda ?? "—"} kg</Text>
+                  </View>
+
+                  <View style={[styles.statCard, { borderLeftColor: "#FF9800" }]}>
+                    <Text style={styles.statCardTitle}>Desvio Padrão</Text>
+                    <Text style={styles.statCardValue}>{estatisticas?.desvioPadrao ?? "—"} kg</Text>
+                  </View>
+
+                  <View style={[styles.statCard, { borderLeftColor: "#F44336" }]}>
+                    <Text style={styles.statCardTitle}>Assimetria</Text>
+                    <Text style={styles.statCardValue}>{estatisticas?.assimetria ?? "—"}</Text>
+                  </View>
+
+                  <View style={[styles.statCard, { borderLeftColor: "#607D8B" }]}>
+                    <Text style={styles.statCardTitle}>Curtose</Text>
+                    <Text style={styles.statCardValue}>{estatisticas?.curtose ?? "—"}</Text>
+                  </View>
+                </ScrollView>
+              </Animated.View>
+            </View>
+            {/* --- FIM BLOCO DE INDICADORES --- */}
+
+            <Text style={styles.graphTitle}>{modoGeral ? "📊 Média Semanal por Dia\n(Todas as semanas)" : "\n📊 Média Total Diária\n(Semana Selecionada)"}</Text>
 
             {hasValidChart ? (
               <LineChart
@@ -581,6 +744,7 @@ export default function WeeklyReportScreen({ navigation, route }) {
                 )}
               </View>
             ))}
+
           </>
         )}
       </ScrollView>
@@ -750,4 +914,62 @@ const styles = StyleSheet.create({
   },
   bottomContainer: { position: "absolute", bottom: 0, left: 0, right: 0 },
   backButton: { position: "absolute", top: 40, left: 20 },
+
+  // ======= ESTILOS DOS INDICADORES (ADICIONADOS) =======
+  statsOuter: {
+    marginHorizontal: 10,
+    marginTop: 10,
+    borderRadius: 12,
+    overflow: "hidden",
+    backgroundColor: "#ffffff",
+    borderWidth: 1,
+    borderColor: "#d0d7d7",
+  },
+  statsHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    backgroundColor: "#e8f5e9",
+  },
+  statsHeaderText: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#2e7d32",
+  },
+  statsHeaderToggle: {
+    fontSize: 14,
+    color: "#2e7d32",
+  },
+  statsAnimated: {
+    // height controlado pela animação
+    paddingVertical: 8,
+  },
+  statsGrid: {
+    paddingHorizontal: 10,
+    alignItems: "center",
+  },
+  statCard: {
+    backgroundColor: "#fff",
+    width: 150,
+    marginRight: 10,
+    borderRadius: 10,
+    padding: 10,
+    elevation: 2,
+    borderLeftWidth: 6,
+    borderLeftColor: "#4CAF50",
+  },
+  statCardTitle: {
+    fontSize: 13,
+    color: "#333",
+    fontWeight: "600",
+    marginBottom: 6,
+  },
+  statCardValue: {
+    fontSize: 16,
+    color: "#111",
+    fontWeight: "700",
+  },
+  // ======= FIM ESTILOS DOS INDICADORES =======
 });
