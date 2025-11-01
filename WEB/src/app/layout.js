@@ -2,7 +2,7 @@ import { AuthProvider } from "./hooks/useAuth";
 import "./globals.css";
 
 export const metadata = {
-  title: "Smart Backpack",
+  title: "Smart Backpack | Cuide de sua saúde com tecnologia",
   description: "Smart BackPack",
   icons: {
     icon: "/favicon.png",

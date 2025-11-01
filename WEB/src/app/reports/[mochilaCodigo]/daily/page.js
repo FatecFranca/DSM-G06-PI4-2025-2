@@ -486,14 +486,13 @@ export default function DailyReportPage({ params }) {
               <div className="bg-white p-6 rounded-lg shadow-md">
                 <h2 className="text-xl font-semibold mb-4">Indicadores Estatísticos</h2>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <StatCard title="Média" value={`${estatisticas.media} kg`} />
-                  <StatCard title="Mediana" value={`${estatisticas.mediana} kg`} />
-                  <StatCard title="Moda" value={estatisticas.moda} />
-                  <StatCard title="Desvio Padrão" value={`${estatisticas.desvioPadrao} kg`} />
-                  <StatCard title="Assimetria" value={estatisticas.assimetria} />
-                  <StatCard title="Curtose" value={estatisticas.curtose} />
-                  <StatCard title="P(X > μ)" value={`${estatisticas.probAcimaMedia}%`} />
-                  <StatCard title="Regressão" value={estatisticas.regressao.equacao} />
+                  <StatCard className="bg-gray-300" title="Média" value={`${estatisticas.media} kg`} />
+                  <StatCard className="bg-gray-300" title="Mediana" value={`${estatisticas.mediana} kg`} />
+                  <StatCard className="bg-gray-300" title="Moda" value={estatisticas.moda} />
+                  <StatCard className="bg-gray-300" title="Desvio Padrão" value={`${estatisticas.desvioPadrao} kg`} />
+                  <StatCard className="bg-gray-300" title="Assimetria" value={estatisticas.assimetria} />
+                  <StatCard className="bg-gray-300" title="Curtose" value={estatisticas.curtose} />
+                  <StatCard className="bg-gray-300" title="Regressão" value={estatisticas.regressao.equacao} />
                 </div>
               </div>
             ) : (
