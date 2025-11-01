@@ -97,39 +97,62 @@ const calcularEstatisticas = (valoresRaw) => {
   };
 };
 
+// --- Função de Regressão Linear (para prever tendência do peso médio diário) ---
+const calcularRegressaoLinear = (valores) => {
+  if (!valores || valores.length < 2) return null;
+
+  const n = valores.length;
+  const xs = Array.from({ length: n }, (_, i) => i + 1);
+  const ys = valores.map(v => Number(v));
+
+  const mediaX = xs.reduce((a, b) => a + b, 0) / n;
+  const mediaY = ys.reduce((a, b) => a + b, 0) / n;
+
+  const numerador = xs.reduce((sum, x, i) => sum + (x - mediaX) * (ys[i] - mediaY), 0);
+  const denominador = xs.reduce((sum, x) => sum + Math.pow(x - mediaX, 2), 0);
+
+  if (denominador === 0) return null;
+
+  const a = numerador / denominador; // inclinação
+  const b = mediaY - a * mediaX;     // intercepto
+
+  return { a: Number(a.toFixed(2)), b: Number(b.toFixed(2)) };
+};
+
+
 // 🎯 Versão ULTRA-SEGURA da função para evitar Infinity no cálculo da média
 const getDailySideAvgs = (medicoes, side) => {
-    if (!medicoes || medicoes.length === 0) return [];
-    
-    const grouped = groupByDay(medicoes);
-    
-    return Object.keys(grouped)
-        .sort()
-        .map((day) => {
-            const items = grouped[day];
-            
-            const sideItems = items
-                .filter(m => {
-                    const local = m.MedicaoLocal?.toLowerCase();
-                    const targetSide = side.toLowerCase();
-                    return local && (local.includes(targetSide) || local.includes("ambos"));
-                })
-                .map(m => Number(m.MedicaoPeso || 0));
+  if (!medicoes || medicoes.length === 0) return [];
 
-            const sum = sideItems.reduce((a, b) => a + b, 0);
-            
-            // Se sideItems.length for 0, avg é 0. Se for divisão por zero (não deveria ocorrer), forçamos 0.
-            let avg = sideItems.length 
-                ? sum / sideItems.length 
-                : 0;
-            
-            // Filtro final: se por alguma razão for NaN ou Infinity, retorna 0
-            if (!Number.isFinite(avg)) {
-                avg = 0;
-            }
-            
-            return roundTo2(avg);
-        });
+  const grouped = groupByDay(medicoes);
+
+  return Object.keys(grouped)
+    .sort()
+    .map((day) => {
+      const items = grouped[day];
+
+      const sideItems = items
+        .filter(m => {
+          const local = m.MedicaoLocal?.toLowerCase();
+          const targetSide = side.toLowerCase();
+          return local && (local.includes(targetSide) || local.includes("ambos"));
+        })
+        .map(m => Number(m.MedicaoPeso || 0));
+
+      const sum = sideItems.reduce((a, b) => a + b, 0);
+
+      // Se sideItems.length for 0, avg é 0. Se for divisão por zero (não deveria ocorrer), forçamos 0.
+      let avg = sideItems.length
+        ? sum / sideItems.length
+        : 0;
+
+      // Filtro final: se por alguma razão for NaN ou Infinity, retorna 0
+      if (!Number.isFinite(avg)) {
+        avg = 0;
+      }
+
+      return roundTo2(avg);
+    });
 };
 
 
@@ -147,9 +170,9 @@ export default function MonthlyReportScreen({ navigation, route }) {
   const [medicoes, setMedicoes] = useState([]);
   const [pesoUsuario, setPesoUsuario] = useState(0);
   const [porcentagemMaxima, setPorcentagemMaxima] = useState(10);
-  
+
   const [estatisticas, setEstatisticas] = useState(null);
-  
+
   const [dadosProcessados, setDadosProcessados] = useState({
     dailyAvgs: [],
     maiorEsq: null,
@@ -163,7 +186,7 @@ export default function MonthlyReportScreen({ navigation, route }) {
   });
 
   const [statsExpanded, setStatsExpanded] = useState(true);
-  const animVal = useRef(new Animated.Value(1)).current; 
+  const animVal = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     bucarDadosUsuario();
@@ -197,7 +220,7 @@ export default function MonthlyReportScreen({ navigation, route }) {
   const processarMedicoes = (dados, pesoUsuario, porcentagemMaxima) => {
     if (!dados || dados.length === 0) {
       setEstatisticas(null);
-      setDadosProcessados({ 
+      setDadosProcessados({
         dailyAvgs: [],
         maiorEsq: null,
         maiorDir: null,
@@ -219,8 +242,8 @@ export default function MonthlyReportScreen({ navigation, route }) {
     let menorDir = null;
     let totalMedicoes = 0;
     let mediçõesAcimaLimite = 0;
-    
-    const totaisMensais = []; 
+
+    const totaisMensais = [];
 
     const pesoMaximoPermitido = (pesoUsuario * (porcentagemMaxima / 100)) / 2;
 
@@ -232,29 +255,29 @@ export default function MonthlyReportScreen({ navigation, route }) {
         const items = grouped[day];
         const left = [];
         const right = [];
-        
+
         // --- Cálculo de Totais por Timestamp para as Estatísticas ---
         const mapaHoraMinuto = {};
         items.forEach(item => {
-            const d = new Date(item.MedicaoData);
-            const chave = `${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}`;
+          const d = new Date(item.MedicaoData);
+          const chave = `${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}`;
 
-            if (!mapaHoraMinuto[chave]) mapaHoraMinuto[chave] = [];
-            mapaHoraMinuto[chave].push(item);
+          if (!mapaHoraMinuto[chave]) mapaHoraMinuto[chave] = [];
+          mapaHoraMinuto[chave].push(item);
         });
 
         Object.values(mapaHoraMinuto).forEach(lista => {
-            const esq = lista.filter(v => localSide(v.MedicaoLocal) === "esquerda");
-            const dir = lista.filter(v => localSide(v.MedicaoLocal) === "direita");
-            
-            const pesoEsq = esq.reduce((acc, v) => acc + Number(v.MedicaoPeso || 0), 0) / (esq.length || 1);
-            const pesoDir = dir.reduce((acc, v) => acc + Number(v.MedicaoPeso || 0), 0) / (dir.length || 1);
-            
-            const total = pesoEsq + pesoDir;
-            // Garantindo que seja finito antes de adicionar
-            if (Number.isFinite(total)) {
-                totaisMensais.push(roundTo2(total)); 
-            }
+          const esq = lista.filter(v => localSide(v.MedicaoLocal) === "esquerda");
+          const dir = lista.filter(v => localSide(v.MedicaoLocal) === "direita");
+
+          const pesoEsq = esq.reduce((acc, v) => acc + Number(v.MedicaoPeso || 0), 0) / (esq.length || 1);
+          const pesoDir = dir.reduce((acc, v) => acc + Number(v.MedicaoPeso || 0), 0) / (dir.length || 1);
+
+          const total = pesoEsq + pesoDir;
+          // Garantindo que seja finito antes de adicionar
+          if (Number.isFinite(total)) {
+            totaisMensais.push(roundTo2(total));
+          }
         });
         // --- Fim Cálculo de Totais por Timestamp
 
@@ -266,10 +289,10 @@ export default function MonthlyReportScreen({ navigation, route }) {
           if (peso > pesoMaximoPermitido) {
             mediçõesAcimaLimite++;
           }
-          
+
           if (side === "esquerda" || side === "ambos") {
             left.push(peso);
-          } 
+          }
           if (side === "direita" || side === "ambos") {
             right.push(peso);
           }
@@ -296,13 +319,13 @@ export default function MonthlyReportScreen({ navigation, route }) {
         const mediaDir = right.length
           ? right.reduce((a, b) => a + b, 0) / right.length
           : 0;
-          
+
         const totalDiario = mediaEsq + mediaDir;
-        
+
         // Garantindo que 'total' seja finito
         let safeTotalDiario = totalDiario;
         if (!Number.isFinite(safeTotalDiario)) {
-             safeTotalDiario = 0;
+          safeTotalDiario = 0;
         }
 
         dailyAvgs.push({
@@ -311,21 +334,26 @@ export default function MonthlyReportScreen({ navigation, route }) {
         });
       });
 
-    const stats = calcularEstatisticas(totaisMensais); 
-    setEstatisticas(stats);
+    const stats = calcularEstatisticas(totaisMensais);
+
+    // --- Cálculo da Regressão Linear com base nos totais diários ---
+    const totaisDiarios = dailyAvgs.map((d) => d.total).filter((v) => Number.isFinite(v));
+    const regressao = calcularRegressaoLinear(totaisDiarios);
+
+    setEstatisticas({ ...stats, regressao });
 
     const diasComMedicao = Object.keys(grouped).length;
-    
+
     setDadosProcessados({
-        dailyAvgs,
-        maiorEsq,
-        maiorDir,
-        menorEsq,
-        menorDir,
-        totalMedicoes,
-        mediçõesAcimaLimite,
-        diasComMedicao,
-        pesoMaximoPermitido,
+      dailyAvgs,
+      maiorEsq,
+      maiorDir,
+      menorEsq,
+      menorDir,
+      totalMedicoes,
+      mediçõesAcimaLimite,
+      diasComMedicao,
+      pesoMaximoPermitido,
     });
   };
 
@@ -372,11 +400,11 @@ export default function MonthlyReportScreen({ navigation, route }) {
       setLoading(false);
     }
   };
-  
+
   // useEffect para processamento (Corrige o "Too many re-renders")
   useEffect(() => {
     processarMedicoes(medicoes, pesoUsuario, porcentagemMaxima);
-  }, [medicoes, pesoUsuario, porcentagemMaxima]); 
+  }, [medicoes, pesoUsuario, porcentagemMaxima]);
 
   const {
     dailyAvgs,
@@ -399,7 +427,7 @@ export default function MonthlyReportScreen({ navigation, route }) {
       },
     ],
   };
-  
+
   // 🎯 Geração segura dos dados para o LineChart de Comparação (Esquerda x Direita)
   const dailyAvgsEsq = getDailySideAvgs(medicoes, "esquer");
   const dailyAvgsDir = getDailySideAvgs(medicoes, "direit");
@@ -417,7 +445,7 @@ export default function MonthlyReportScreen({ navigation, route }) {
 
   const animatedHeight = animVal.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, 140], 
+    outputRange: [0, 140],
   });
   const animatedOpacity = animVal;
 
@@ -432,17 +460,17 @@ export default function MonthlyReportScreen({ navigation, route }) {
       </View>
     );
   };
-  
+
   const renderIndicadores = () => {
     if (totalMedicoes === 0) return null;
-    
+
     const estatisticasCalculadas = estatisticas;
 
     const percentualAcimaLimite = totalMedicoes > 0 ? (
-        (mediçõesAcimaLimite / totalMedicoes) *
-        100
+      (mediçõesAcimaLimite / totalMedicoes) *
+      100
     ).toFixed(1) : "0.0";
-    
+
     const isAlertLimite = mediçõesAcimaLimite > 0;
 
     return (
@@ -457,74 +485,58 @@ export default function MonthlyReportScreen({ navigation, route }) {
             {renderStatCard(
               "Total Medições",
               `${totalMedicoes}`,
-              "#2196F3", 
-              "📝"
+              "#2196F3"
             )}
-            
+
             {renderStatCard(
               "Dias c/ Medição",
               `${diasComMedicao}`,
-              "#4CAF50", 
-              "📅"
+              "#4CAF50"
             )}
-            
+
             {renderStatCard(
               "Média Total",
               `${estatisticasCalculadas?.media ?? "—"} kg`,
-              "#00BCD4",
-              "⚖️"
+              "#00BCD4"
             )}
 
             {renderStatCard(
               "Mediana",
               `${estatisticasCalculadas?.mediana ?? "—"} kg`,
-              "#2196F3",
-              "📊"
+              "#2196F3"
             )}
 
             {renderStatCard(
               "Moda",
               `${estatisticasCalculadas?.moda ?? "—"} kg`,
-              "#9C27B0",
-              "🏆"
+              "#9C27B0"
             )}
-            
+
             {renderStatCard(
               "Desvio Padrão",
               `${estatisticasCalculadas?.desvioPadrao ?? "—"} kg`,
-              "#FF9800",
-              "🧮"
+              "#FF9800"
             )}
-            
+
             {renderStatCard(
               "Assimetria",
               `${estatisticasCalculadas?.assimetria ?? "—"}`,
-              "#F44336",
-              "🔄"
+              "#F44336"
             )}
 
             {renderStatCard(
               "Curtose",
               `${estatisticasCalculadas?.curtose ?? "—"}`,
-              "#607D8B",
-              "📐"
+              "#607D8B"
             )}
-            
-            {/*}
-             <View style={[styles.statCard, { borderLeftColor: isAlertLimite ? "#9C27B0" : "#607D8B" }]}>
-              <Text style={styles.statCardTitle}>
-                {isAlertLimite ? "⚠️" : "✅"} Acima do Limite
-              </Text>
-              <Text style={[styles.statCardValue, isAlertLimite && { color: "#9C27B0" }]}>
-                {mediçõesAcimaLimite} ({percentualAcimaLimite}%)
-              </Text>
-              {isAlertLimite && (
-                <Text style={styles.statCardFooter}>
-                  Limite: {pesoMaximoPermitido.toFixed(2)} kg
-                </Text>
-              )}
-            </View>
-            {*/}
+
+            {renderStatCard(
+              "Regressão Linear",
+              estatisticasCalculadas?.regressao
+                ? `y = ${estatisticasCalculadas.regressao.a}x + ${estatisticasCalculadas.regressao.b}`
+                : "Não aplicável",
+              "#455A64"
+            )}
           </ScrollView>
         </Animated.View>
       </View>
@@ -595,9 +607,9 @@ export default function MonthlyReportScreen({ navigation, route }) {
             onChange={handleMonthChange}
           />
         )}
-        
+
         <TouchableOpacity style={styles.fetchButton} onPress={buscarRelatorioMensal}>
-            <Text style={styles.fetchButtonText}>Buscar Relatório</Text>
+          <Text style={styles.fetchButtonText}>Buscar Relatório</Text>
         </TouchableOpacity>
 
         {loading ? (
@@ -614,72 +626,72 @@ export default function MonthlyReportScreen({ navigation, route }) {
             {renderIndicadores()}
 
             <Text style={styles.graphTitle}>📊 Média Diária do Mês</Text>
-            
+
             {/* 🎯 Garante que chartData.datasets[0].data tenha pontos antes de renderizar */}
             {chartData.datasets[0].data.length > 0 && (
-                <LineChart
-                  data={chartData}
-                  width={screenWidth - 20}
-                  height={220}
-                  yAxisSuffix=" kg"
-                  chartConfig={{
-                    backgroundColor: "#fff",
-                    backgroundGradientFrom: "#e0f7fa",
-                    backgroundGradientTo: "#b2ebf2",
-                    decimalPlaces: 1,
-                    color: (opacity = 1) => `rgba(0, 88, 136, ${opacity})`,
-                    labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-                  }}
-                  style={styles.graph}
-                  bezier
-                  fromZero
-                />
+              <LineChart
+                data={chartData}
+                width={screenWidth - 20}
+                height={220}
+                yAxisSuffix=" kg"
+                chartConfig={{
+                  backgroundColor: "#fff",
+                  backgroundGradientFrom: "#e0f7fa",
+                  backgroundGradientTo: "#b2ebf2",
+                  decimalPlaces: 1,
+                  color: (opacity = 1) => `rgba(0, 88, 136, ${opacity})`,
+                  labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+                }}
+                style={styles.graph}
+                bezier
+                fromZero
+              />
             )}
-            
+
             {chartData.datasets[0].data.length === 0 && (
-                <Text style={styles.infoText}>Gráfico da Média Diária indisponível.</Text>
+              <Text style={styles.infoText}>Gráfico da Média Diária indisponível.</Text>
             )}
 
             <Text style={[styles.graphTitle, { marginTop: 25 }]}>
               ⚖️ Comparativo Esquerda x Direita
             </Text>
-            
+
             {/* 🎯 Garante que os dados laterais tenham pontos antes de renderizar */}
             {dailyAvgsEsq.length > 0 && dailyAvgsDir.length > 0 ? (
-                <LineChart
-                  data={{
-                    labels: dailyAvgs.map((d) => d.dia),
-                    datasets: [
-                      {
-                        data: dailyAvgsEsq, // Dados seguros (Esquerda)
-                        color: () => "#1976d2",
-                        strokeWidth: 2,
-                      },
-                      {
-                        data: dailyAvgsDir, // Dados seguros (Direita)
-                        color: () => "#43a047",
-                        strokeWidth: 2,
-                      },
-                    ],
-                    legend: ["Esquerda", "Direita"],
-                  }}
-                  width={screenWidth - 20}
-                  height={180} 
-                  yAxisSuffix=" kg"
-                  chartConfig={{
-                    backgroundColor: "#fff",
-                    backgroundGradientFrom: "#e0f7fa",
-                    backgroundGradientTo: "#b2ebf2",
-                    decimalPlaces: 1,
-                    color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-                    labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-                    propsForDots: { r: "4", strokeWidth: "2" },
-                    propsForBackgroundLines: { strokeDasharray: "3" },
-                  }}
-                  style={[styles.graph, { marginBottom: 20 }]}
-                />
+              <LineChart
+                data={{
+                  labels: dailyAvgs.map((d) => d.dia),
+                  datasets: [
+                    {
+                      data: dailyAvgsEsq, // Dados seguros (Esquerda)
+                      color: () => "#1976d2",
+                      strokeWidth: 2,
+                    },
+                    {
+                      data: dailyAvgsDir, // Dados seguros (Direita)
+                      color: () => "#43a047",
+                      strokeWidth: 2,
+                    },
+                  ],
+                  legend: ["Esquerda", "Direita"],
+                }}
+                width={screenWidth - 20}
+                height={180}
+                yAxisSuffix=" kg"
+                chartConfig={{
+                  backgroundColor: "#fff",
+                  backgroundGradientFrom: "#e0f7fa",
+                  backgroundGradientTo: "#b2ebf2",
+                  decimalPlaces: 1,
+                  color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+                  labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+                  propsForDots: { r: "4", strokeWidth: "2" },
+                  propsForBackgroundLines: { strokeDasharray: "3" },
+                }}
+                style={[styles.graph, { marginBottom: 20 }]}
+              />
             ) : (
-                <Text style={styles.infoText}>Gráfico Comparativo indisponível ou dados insuficientes.</Text>
+              <Text style={styles.infoText}>Gráfico Comparativo indisponível ou dados insuficientes.</Text>
             )}
 
             {renderMedicaoCard("Maior Medição", maiorEsq, "maior")}
@@ -812,7 +824,7 @@ const styles = StyleSheet.create({
     padding: 10,
     elevation: 2,
     borderLeftWidth: 6,
-    borderLeftColor: "#4CAF50", 
+    borderLeftColor: "#4CAF50",
   },
   statCardTitle: {
     fontSize: 13,

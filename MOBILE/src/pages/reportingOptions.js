@@ -16,6 +16,7 @@ export default function ReportingOptionsScreen({ navigation, route }) {
     { titulo: "☀️ Semanal", rota: "weeklyReport" },
     { titulo: "📈 Mensal", rota: "monthlyReport" },
     { titulo: "📆 Anual", rota: "annualReport" },
+    { titulo: "↪️ Previsão Futura", rota: "futurePrediction" },
   ];
 
   const handleNavegar = (rota) => {

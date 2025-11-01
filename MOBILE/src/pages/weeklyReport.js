@@ -37,6 +37,27 @@ import SettingsModal from "../components/SettingsModal";
 
 const screenWidth = Dimensions.get("window").width;
 
+const calcularRegressaoLinear = (x, y) => {
+  const n = x.length;
+  if (n < 2) return null; // precisa de pelo menos 2 pontos
+
+  const somaX = x.reduce((a, b) => a + b, 0);
+  const somaY = y.reduce((a, b) => a + b, 0);
+  const somaXY = x.reduce((a, b, i) => a + b * y[i], 0);
+  const somaX2 = x.reduce((a, b) => a + b * b, 0);
+
+  const numeradorA = n * somaXY - somaX * somaY;
+  const denominadorA = n * somaX2 - somaX * somaX;
+
+  if (denominadorA === 0) return null; // evita divisão por zero
+
+  const a = numeradorA / denominadorA;
+  const b = somaY / n - a * (somaX / n);
+
+  return { a: Math.round(a * 100) / 100, b: Math.round(b * 100) / 100 };
+};
+
+
 export default function WeeklyReportScreen({ navigation, route }) {
   const { codigo, nome } = route.params;
 
@@ -125,7 +146,7 @@ export default function WeeklyReportScreen({ navigation, route }) {
 
       if (modoGeral) {
         // 🔹 Modo Última Semana → usa a rota antiga
-        url = `${LINKAPI}${PORTAPI}/medicoes/semanal/${codigo}`;
+        url = `${LINKAPI}${PORTAPI}/medicoes/geral/${codigo}`;
       } else {
         // 🔹 Modo Semana Selecionada → usa a nova rota /periodo/:inicio/:fim/:mochila
         const inicio = format(
@@ -188,7 +209,28 @@ export default function WeeklyReportScreen({ navigation, route }) {
       });
 
       const stats = calcularEstatisticas(totals);
-      setEstatisticas(stats);
+
+      // --- Cálculo da regressão linear ---
+      const x = []; // eixo X → índices (1, 2, 3, 4, ...)
+      const y = []; // eixo Y → médias válidas
+
+      totals.forEach((valor, i) => {
+        if (valor > 0 && Number.isFinite(valor)) {
+          x.push(i + 1);
+          y.push(valor);
+        }
+      });
+
+      let regressao = null;
+      if (x.length >= 2) {
+        regressao = calcularRegressaoLinear(x, y);
+      }
+
+      setEstatisticas({
+        ...stats,
+        regressao,
+      });
+
     } catch (e) {
       console.error(e);
       setErro("Erro ao conectar ao servidor.");
@@ -246,6 +288,8 @@ export default function WeeklyReportScreen({ navigation, route }) {
       desvioPadrao: roundTo2(desvioPadrao),
       assimetria: roundTo2(assimetria),
       curtose: roundTo2(curtose),
+      totalMedicoes: n,
+      totalPeso: roundTo2(somatorio),
     };
   };
 
@@ -487,6 +531,16 @@ export default function WeeklyReportScreen({ navigation, route }) {
 
               <Animated.View style={[styles.statsAnimated, { height: animatedHeight, opacity: animatedOpacity }]}>
                 <ScrollView horizontal contentContainerStyle={styles.statsGrid} showsHorizontalScrollIndicator={false}>
+                  <View style={[styles.statCard, { borderLeftColor: "#4c8bafff" }]}>
+                    <Text style={styles.statCardTitle}>Total Medições</Text>
+                    <Text style={styles.statCardValue}>{estatisticas?.totalMedicoes ?? "—"}</Text>
+                  </View>
+
+                  <View style={[styles.statCard, { borderLeftColor: "#af4c4cff" }]}>
+                    <Text style={styles.statCardTitle}>Total Peso</Text>
+                    <Text style={styles.statCardValue}>{estatisticas?.totalPeso ?? "—"} kg</Text>
+                  </View>
+
                   <View style={[styles.statCard, { borderLeftColor: "#4CAF50" }]}>
                     <Text style={styles.statCardTitle}>Média</Text>
                     <Text style={styles.statCardValue}>{estatisticas?.media ?? "—"} kg</Text>
@@ -516,12 +570,19 @@ export default function WeeklyReportScreen({ navigation, route }) {
                     <Text style={styles.statCardTitle}>Curtose</Text>
                     <Text style={styles.statCardValue}>{estatisticas?.curtose ?? "—"}</Text>
                   </View>
+
+                  <View style={[styles.statCard, { borderLeftColor: "#607D8B" }]}>
+                    <Text style={styles.statCardTitle}>Regressão Linea</Text>
+                    <Text style={styles.statCardValue}>{estatisticas?.regressao
+                      ? `y = ${estatisticas.regressao.a}x + ${estatisticas.regressao.b}`
+                      : "-"}</Text>
+                  </View>
                 </ScrollView>
               </Animated.View>
             </View>
             {/* --- FIM BLOCO DE INDICADORES --- */}
 
-            <Text style={styles.graphTitle}>{modoGeral ? "📊 Média Semanal por Dia\n(Todas as semanas)" : "\n📊 Média Total Diária\n(Semana Selecionada)"}</Text>
+            <Text style={styles.graphTitle}>{modoGeral ? "\n📊 Média Semanal por Dia\n(Todas as semanas)" : "\n📊 Média Total Diária\n(Semana Selecionada)"}</Text>
 
             {hasValidChart ? (
               <LineChart
