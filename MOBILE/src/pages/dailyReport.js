@@ -119,7 +119,7 @@ export default function DailyReportScreen({ navigation, route }) {
     const denomSkew = desvioPadrao === 0 ? 1 : Math.pow(desvioPadrao, 3);
     const denomKurt = desvioPadrao === 0 ? 1 : Math.pow(desvioPadrao, 4);
 
-    // Assimetria (Fisher-Pearson sample skewness could be used, but we'll use population skewness)
+    // Assimetria (population)
     const assimetria = (valores.reduce((a, b) => a + Math.pow(b - media, 3), 0) / n) / denomSkew;
 
     // Curtose (excesso de curtose: kurtosis - 3)
@@ -132,7 +132,34 @@ export default function DailyReportScreen({ navigation, route }) {
       desvioPadrao: roundTo2(desvioPadrao),
       assimetria: roundTo2(assimetria),
       curtose: roundTo2(curtose),
+      totalMedicoes: n,
+      totalPeso: roundTo2(somatorio),
     };
+  };
+
+  // === NOVA FUNÇÃO: Regressão Linear simples sobre o array de totais (ordem temporal) ===
+  const calcularRegressaoLinear = (valoresRaw) => {
+    const valores = valoresRaw.filter((v) => typeof v === "number" && Number.isFinite(v));
+    const n = valores.length;
+    if (n < 2) return null;
+
+    // x = 1..n (ordem dos timestamps)
+    const x = Array.from({ length: n }, (_, i) => i + 1);
+    const y = valores;
+
+    const somaX = x.reduce((a, b) => a + b, 0);
+    const somaY = y.reduce((a, b) => a + b, 0);
+    const somaXY = x.reduce((acc, cur, i) => acc + cur * y[i], 0);
+    const somaX2 = x.reduce((acc, cur) => acc + cur * cur, 0);
+
+    const denom = (n * somaX2 - somaX * somaX);
+    if (denom === 0) return null; // evita divisão por zero (caso valores x iguais, improvável)
+
+    const a = (n * somaXY - somaX * somaY) / denom;
+    const b = (somaY - a * somaX) / n;
+
+    // arredondar conforme solicitado (duas casas)
+    return { a: roundTo2(a), b: roundTo2(b) };
   };
 
   const buscarRelatorio = async () => {
@@ -197,7 +224,24 @@ export default function DailyReportScreen({ navigation, route }) {
       });
 
       const stats = calcularEstatisticas(totais);
-      setEstatisticas(stats);
+
+      // calcular regressão linear usando os totais (mantendo a ordem temporal das chaves)
+      let regressaoText = null;
+      const regressao = calcularRegressaoLinear(totais);
+      if (regressao) {
+        regressaoText = `y = ${regressao.a}x + ${regressao.b}`;
+      } else {
+        regressaoText = "Regressão não aplicável";
+      }
+
+      if (stats) {
+        setEstatisticas({
+          ...stats,
+          regressao: regressaoText,
+        });
+      } else {
+        setEstatisticas({ regressao: regressaoText });
+      }
 
     } catch (e) {
       console.error(e);
@@ -392,6 +436,16 @@ export default function DailyReportScreen({ navigation, route }) {
               <Animated.View style={[styles.statsAnimated, { height: animatedHeight, opacity: animatedOpacity }]}>
                 <ScrollView horizontal contentContainerStyle={styles.statsGrid} showsHorizontalScrollIndicator={false}>
                   {/* Cada card representa uma métrica */}
+                  <View style={[styles.statCard, { borderLeftColor: "#4c8bafff" }]}>
+                    <Text style={styles.statCardTitle}>Total Medições</Text>
+                    <Text style={styles.statCardValue}>{estatisticas?.totalMedicoes ?? "—"}</Text>
+                  </View>
+
+                  <View style={[styles.statCard, { borderLeftColor: "#af4c4cff" }]}>
+                    <Text style={styles.statCardTitle}>Total Peso</Text>
+                    <Text style={styles.statCardValue}>{estatisticas?.totalPeso ?? "—"} kg</Text>
+                  </View>
+
                   <View style={[styles.statCard, { borderLeftColor: "#4CAF50" }]}>
                     <Text style={styles.statCardTitle}>Média</Text>
                     <Text style={styles.statCardValue}>{estatisticas?.media ?? "—"} kg</Text>
@@ -421,6 +475,15 @@ export default function DailyReportScreen({ navigation, route }) {
                     <Text style={styles.statCardTitle}>Curtose</Text>
                     <Text style={styles.statCardValue}>{estatisticas?.curtose ?? "—"}</Text>
                   </View>
+
+                  {/* NOVO: Card da Regressão Linear */}
+                  <View style={[styles.statCard, { borderLeftColor: "#8BC34A" }]}>
+                    <Text style={styles.statCardTitle}>Regressão Linear</Text>
+                    <Text style={styles.statCardValue}>
+                      {estatisticas?.regressao ?? "—"}
+                    </Text>
+                  </View>
+
                 </ScrollView>
               </Animated.View>
             </View>

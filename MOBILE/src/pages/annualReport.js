@@ -1,3 +1,4 @@
+// AnnualReportScreen.js
 import React, { useState, useEffect, useRef } from "react";
 import {
   View,
@@ -21,8 +22,7 @@ import {
   validarTokens,
   pegarTokens,
   obterDadosUsuario,
-  // 🎯 roundTo2 deve ser importado ou definido aqui
-  roundTo2, 
+  roundTo2,
 } from "../utils/validacoes";
 
 import BottomNav from "../components/BottomNav";
@@ -30,16 +30,7 @@ import SettingsModal from "../components/SettingsModal";
 
 const screenWidth = Dimensions.get("window").width;
 
-// --- FUNÇÕES AUXILIARES (COPIADAS DO RELATÓRIO MENSAL) ---
-
-// 🎯 Assumindo que roundTo2 está em ../utils/validacoes.js
-// Se não estiver, descomente e use esta função:
-/*
-const roundTo2 = (num) => {
-    return Math.round(num * 100) / 100;
-};
-*/
-
+// --- FUNÇÕES AUXILIARES ---
 const localSide = (local) => {
   if (!local) return "outro";
   const l = local.toString().toLowerCase();
@@ -50,8 +41,7 @@ const localSide = (local) => {
 };
 
 const calcularEstatisticas = (valoresRaw) => {
-  // Filtra valores que são números finitos
-  const valores = valoresRaw.filter((v) => typeof v === "number" && Number.isFinite(v)); 
+  const valores = valoresRaw.filter((v) => typeof v === "number" && Number.isFinite(v));
   if (!valores.length) return null;
 
   const n = valores.length;
@@ -70,22 +60,19 @@ const calcularEstatisticas = (valoresRaw) => {
     freq[key] = (freq[key] || 0) + 1;
   });
   const maxFreq = Math.max(...Object.values(freq));
-  const modaArray = Object.keys(freq).filter((k) => freq[k] === maxFreq).map((k) => Number(k));
+  const modaArray = Object.keys(freq)
+    .filter((k) => freq[k] === maxFreq)
+    .map((k) => Number(k));
 
-  // Variância e Desvio Padrão
   const variancia =
     valores.reduce((a, b) => a + Math.pow(b - media, 2), 0) / n;
   const desvioPadrao = Math.sqrt(variancia);
 
-  // Denominadores para Assimetria e Curtose (evitando divisão por zero)
   const denomSkew = desvioPadrao === 0 ? 1 : Math.pow(desvioPadrao, 3);
   const denomKurt = desvioPadrao === 0 ? 1 : Math.pow(desvioPadrao, 4);
 
-  // Assimetria
   const assimetria =
     valores.reduce((a, b) => a + Math.pow(b - media, 3), 0) / n / denomSkew;
-
-  // Curtose
   const curtose =
     valores.reduce((a, b) => a + Math.pow(b - media, 4), 0) / n / denomKurt - 3;
 
@@ -99,8 +86,27 @@ const calcularEstatisticas = (valoresRaw) => {
   };
 };
 
-// --- COMPONENTE PRINCIPAL ---
+// --- FUNÇÃO DE REGRESSÃO LINEAR ---
+const calcularRegressaoLinear = (valores) => {
+  // valores: array de números (ex.: totais por mês)
+  const n = valores.length;
+  if (n < 2) return null;
+  const x = Array.from({ length: n }, (_, i) => i + 1); // 1..n
+  const y = valores;
 
+  const mediaX = x.reduce((a, b) => a + b, 0) / n;
+  const mediaY = y.reduce((a, b) => a + b, 0) / n;
+
+  const numerador = x.reduce((acc, xi, i) => acc + (xi - mediaX) * (y[i] - mediaY), 0);
+  const denominador = x.reduce((acc, xi) => acc + Math.pow(xi - mediaX, 2), 0);
+
+  const a = denominador === 0 ? 0 : numerador / denominador;
+  const b = mediaY - a * mediaX;
+
+  return { a: roundTo2(a), b: roundTo2(b) };
+};
+
+// --- COMPONENTE PRINCIPAL ---
 export default function AnnualReportScreen({ navigation, route }) {
   const { codigo, nome } = route.params;
 
@@ -135,7 +141,6 @@ export default function AnnualReportScreen({ navigation, route }) {
     }
   }, [anoSelecionado, pesoUsuario]);
   
-  // 🎯 Novo useEffect para processar as medições quando elas mudarem
   useEffect(() => {
     processarMedicoesAnual(medicoes);
   }, [medicoes]);
@@ -207,7 +212,7 @@ export default function AnnualReportScreen({ navigation, route }) {
     return grupos;
   };
   
-  // 🎯 Nova função de processamento de dados para o relatório anual
+  // Processa medições para gerar médias mensais e estatísticas
   const processarMedicoesAnual = (dados) => {
     if (!dados || dados.length === 0) {
       setEstatisticas(null);
@@ -242,9 +247,6 @@ export default function AnnualReportScreen({ navigation, route }) {
       
       // Garante que o valor é finito antes de adicionar para as estatísticas
       if (Number.isFinite(totalMensal)) {
-        // Se o cálculo da média é feito apenas uma vez por mês, usamos o próprio totalMensal
-        // Se a intenção for analisar todas as medições diárias do ano, o cálculo seria mais complexo.
-        // Assumindo que o "total" mensal é o ponto de dado para a análise estatística anual.
         totaisAnuais.push(roundTo2(totalMensal));
       }
       
@@ -259,9 +261,18 @@ export default function AnnualReportScreen({ navigation, route }) {
     // Calcular as estatísticas usando os totais mensais
     const stats = calcularEstatisticas(totaisAnuais); 
     setEstatisticas(stats);
+
+    // 🔹 Adiciona regressão linear na estrutura de estatísticas
+    if (totaisAnuais.length >= 2) {
+      const regressao = calcularRegressaoLinear(totaisAnuais);
+      setEstatisticas((prev) => ({
+        ...prev,
+        regressao: `y = ${regressao.a}x + ${regressao.b}`,
+      }));
+    }
   };
   
-  // UI Helpers (Copiados e adaptados)
+  // UI Helpers
   
   const toggleStats = () => {
     const toValue = statsExpanded ? 0 : 1;
@@ -309,38 +320,37 @@ export default function AnnualReportScreen({ navigation, route }) {
             {renderStatCard(
               "Média Anual",
               `${estatisticasCalculadas?.media ?? "—"} kg`,
-              "#00BCD4",
-              "⚖️"
+              "#00BCD4"
             )}
             {renderStatCard(
               "Mediana",
               `${estatisticasCalculadas?.mediana ?? "—"} kg`,
-              "#2196F3",
-              "📊"
+              "#2196F3"
             )}
             {renderStatCard(
               "Moda",
               `${estatisticasCalculadas?.moda ?? "—"} kg`,
-              "#9C27B0",
-              "🏆"
+              "#9C27B0"
             )}
             {renderStatCard(
               "Desvio Padrão",
               `${estatisticasCalculadas?.desvioPadrao ?? "—"} kg`,
-              "#FF9800",
-              "🧮"
+              "#FF9800"
             )}
             {renderStatCard(
               "Assimetria",
               `${estatisticasCalculadas?.assimetria ?? "—"}`,
-              "#F44336",
-              "🔄"
+              "#F44336"
             )}
             {renderStatCard(
               "Curtose",
               `${estatisticasCalculadas?.curtose ?? "—"}`,
-              "#607D8B",
-              "📐"
+              "#607D8B"
+            )}
+            {renderStatCard(
+              "Regressão Linear",
+              `${estatisticasCalculadas?.regressao ?? "—"}`,
+              "#8BC34A"
             )}
           </ScrollView>
         </Animated.View>
@@ -397,7 +407,7 @@ export default function AnnualReportScreen({ navigation, route }) {
           <>
             {renderIndicadoresAnuais()} 
           
-            {/* Gráfico principal */}
+            {/* Gráfico principal */} 
             <Text style={styles.graphTitle}>📊 Média de Peso por Mês</Text>
             {mediasMensais.filter(v => v > 0).length > 0 ? (
                 <LineChart
@@ -449,8 +459,7 @@ export default function AnnualReportScreen({ navigation, route }) {
   );
 }
 
-// --- ESTILOS (Adicionados ou Modificados) ---
-
+// --- ESTILOS (completos) ---
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#e0f7fa" },
   title: {
@@ -460,15 +469,34 @@ const styles = StyleSheet.create({
     marginTop: 60,
     color: "#3A3A3A",
   },
-  subtitle: { textAlign: "center", color: "#555", marginBottom: 20 },
-  yearSelector: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    marginVertical: 10,
+  subtitle: {
+    fontSize: 16,
+    color: "#555",
+    textAlign: "center",
+    marginBottom: 20,
   },
+  dateButton: {
+    alignSelf: "center",
+    backgroundColor: "#fff",
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: "#9dadaf",
+    marginBottom: 15,
+  },
+  dateButtonText: { fontSize: 16, color: "#333" },
   label: { fontSize: 16, color: "#333", marginRight: 10 },
   picker: { height: 50, width: 150 },
+  pickerWrapper: {
+    backgroundColor: "#fff",
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#b0bec5",
+    overflow: "hidden",
+    height: 50,
+    width: 150,
+  },
   fetchButton: {
     backgroundColor: "#0288d1",
     borderRadius: 10,
@@ -481,16 +509,11 @@ const styles = StyleSheet.create({
   loadingContainer: { alignItems: "center", marginTop: 30 },
   errorText: { color: "red", textAlign: "center", marginTop: 20 },
   infoText: { textAlign: "center", color: "#555", marginTop: 40 },
-  graphTitle: {
-    fontSize: 18,
-    textAlign: "center",
-    marginVertical: 10,
-    color: "#333",
-  },
+  graphTitle: { fontSize: 18, textAlign: "center", marginVertical: 10, color: "#333" },
   graph: { alignSelf: "center", borderRadius: 10 },
   bottomContainer: { position: "absolute", bottom: 0, left: 0, right: 0 },
   backButton: { position: "absolute", top: 40, left: 20 },
-  
+
   // Estilos de Indicadores (Adicionados)
   statsOuter: {
     marginHorizontal: 10,
@@ -534,7 +557,7 @@ const styles = StyleSheet.create({
     padding: 10,
     elevation: 2,
     borderLeftWidth: 6,
-    borderLeftColor: "#4CAF50", 
+    borderLeftColor: "#4CAF50",
   },
   statCardTitle: {
     fontSize: 13,
@@ -547,6 +570,8 @@ const styles = StyleSheet.create({
     color: "#111",
     fontWeight: "700",
   },
+
+  // outros estilos reaproveitados
   yearSelectorOuter: {
     flexDirection: "row",
     alignItems: "center",
@@ -558,12 +583,29 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 1,
     borderColor: "#b0bec5",
-    overflow: 'hidden', // Importante para o borderRadius
+    overflow: "hidden",
     height: 50,
-    width: 150, // Ajuste este valor se necessário
+    width: 150,
   },
   picker: {
     width: "100%",
     height: 50,
   },
+
+  // cards / layout
+  card: {
+    backgroundColor: "#f9f9f9",
+    borderRadius: 12,
+    padding: 12,
+    marginVertical: 8,
+    marginHorizontal: 10,
+    elevation: 2,
+  },
+  cardTitle: { fontSize: 14, fontWeight: "700", color: "#333" },
+  cardValue: { fontSize: 18, fontWeight: "800", color: "#0288d1", marginTop: 6 },
+
+  // extras
+  loadingText: { textAlign: "center", marginTop: 8 },
+  // fallback para o gráfico
+  emptyChart: { textAlign: "center", color: "#777", marginTop: 8 },
 });
