@@ -183,7 +183,7 @@ export default function WeeklyReportPage({ params }) {
 
       } catch (err) {
         console.error("[WeeklyReportPage] Erro ao carregar relatório:", err);
-        setError(err.message || "Falha ao carregar o relatório semanal.");
+        setError(err.message || "Falha ao carregar o relatório anual.");
         setChartData([]);
         setReportData([]);
         setEstatisticas(null);
@@ -200,7 +200,7 @@ export default function WeeklyReportPage({ params }) {
       <ProtectedRoute>
         <Header />
         <div className="min-h-screen flex items-center justify-center bg-gray-50">
-          <p>Carregando relatório semanal...</p>
+          <p>Carregando relatório anual...</p>
         </div>
       </ProtectedRoute>
     );
@@ -240,7 +240,7 @@ export default function WeeklyReportPage({ params }) {
               <FiArrowLeft size={24} />
             </button>
             <div>
-              <h1 className="text-2xl font-bold">Relatório Semanal</h1>
+              <h1 className="text-2xl font-bold">Relatório Anual</h1>
               <p className="text-gray-600">Mochila: {mochilaCodigo}</p>
             </div>
           </div>
@@ -248,7 +248,7 @@ export default function WeeklyReportPage({ params }) {
           {/* Conteúdo do Relatório */}
           <div className="mt-8 space-y-8">
             {/* Gráfico */}
-            <Chart dados={chartData} titulo="Dados do Relatório Semanal" />
+            <Chart dados={chartData} titulo="Dados do Relatório Anual" />
 
             {/* --- SEÇÃO DE ESTATÍSTICAS --- */}
             {estatisticas ? (
