@@ -8,6 +8,7 @@ import { useAuth } from "@/app/hooks/useAuth";
 import ProtectedRoute from "@/components/ProtectedRoutes/ProtectedRoute";
 import Header from "@/components/Header/Header";
 import Chart from "@/components/Chart/Chart";
+import StatCard from "@/components/StatCard/StatCard";
 
 // --- FUNÇÃO AUXILIAR PARA ARREDONDAR PARA 2 CASAS DECIMAIS ---
 function roundTo2(num) {
@@ -320,12 +321,3 @@ export default function WeeklyReportPage({ params }) {
   );
 }
 
-// --- COMPONENTE REUTILIZÁVEL PARA OS CARDS DE ESTATÍSTICAS ---
-function StatCard({ title, value }) {
-  return (
-    <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-      <h3 className="text-sm font-medium text-gray-500">{title}</h3>
-      <p className="text-lg font-semibold text-gray-900 mt-1">{value}</p>
-    </div>
-  );
-}
