@@ -119,12 +119,12 @@ export default function AnnualReportScreen({ navigation, route }) {
 
   const [pesoUsuario, setPesoUsuario] = useState(0);
   const [porcentagemMaxima, setPorcentagemMaxima] = useState(10);
-  
+
   const [estatisticas, setEstatisticas] = useState(null);
   const [mediasMensais, setMediasMensais] = useState(Array(12).fill(0));
 
   const [statsExpanded, setStatsExpanded] = useState(true);
-  const animVal = useRef(new Animated.Value(1)).current; 
+  const animVal = useRef(new Animated.Value(1)).current;
 
   const meses = [
     "Jan", "Fev", "Mar", "Abr", "Mai", "Jun",
@@ -140,7 +140,7 @@ export default function AnnualReportScreen({ navigation, route }) {
       buscarRelatorioAnual();
     }
   }, [anoSelecionado, pesoUsuario]);
-  
+
   useEffect(() => {
     processarMedicoesAnual(medicoes);
   }, [medicoes]);
@@ -205,13 +205,13 @@ export default function AnnualReportScreen({ navigation, route }) {
     const grupos = {};
     dados.forEach((item) => {
       // 0 a 11
-      const mes = new Date(item.MedicaoData).getMonth(); 
+      const mes = new Date(item.MedicaoData).getMonth();
       if (!grupos[mes]) grupos[mes] = [];
       grupos[mes].push(item);
     });
     return grupos;
   };
-  
+
   // Processa medições para gerar médias mensais e estatísticas
   const processarMedicoesAnual = (dados) => {
     if (!dados || dados.length === 0) {
@@ -234,7 +234,7 @@ export default function AnnualReportScreen({ navigation, route }) {
       const direita = med.filter((m) =>
         localSide(m.MedicaoLocal) === "direita" || localSide(m.MedicaoLocal) === "ambos"
       );
-      
+
       // Média dos pesos medidos para cada lado no mês
       const mediaEsq =
         esquerda.reduce((a, b) => a + Number(b.MedicaoPeso || 0), 0) /
@@ -244,22 +244,22 @@ export default function AnnualReportScreen({ navigation, route }) {
         (direita.length || 1);
 
       const totalMensal = mediaEsq + mediaDir;
-      
+
       // Garante que o valor é finito antes de adicionar para as estatísticas
       if (Number.isFinite(totalMensal)) {
         totaisAnuais.push(roundTo2(totalMensal));
       }
-      
+
       // Filtro final de segurança para o gráfico
       if (!Number.isFinite(totalMensal)) return 0;
 
       return roundTo2(totalMensal);
     });
-    
+
     setMediasMensais(novasMediasMensais);
 
     // Calcular as estatísticas usando os totais mensais
-    const stats = calcularEstatisticas(totaisAnuais); 
+    const stats = calcularEstatisticas(totaisAnuais);
     setEstatisticas(stats);
 
     // 🔹 Adiciona regressão linear na estrutura de estatísticas
@@ -271,9 +271,9 @@ export default function AnnualReportScreen({ navigation, route }) {
       }));
     }
   };
-  
+
   // UI Helpers
-  
+
   const toggleStats = () => {
     const toValue = statsExpanded ? 0 : 1;
     Animated.timing(animVal, {
@@ -301,11 +301,11 @@ export default function AnnualReportScreen({ navigation, route }) {
       </View>
     );
   };
-  
+
   const renderIndicadoresAnuais = () => {
     // Apenas renderiza se houver medições E estatísticas calculadas
     if (medicoes.length === 0 || !estatisticas) return null;
-    
+
     const estatisticasCalculadas = estatisticas;
 
     return (
@@ -376,16 +376,16 @@ export default function AnnualReportScreen({ navigation, route }) {
 
         <View style={styles.yearSelectorOuter}>
           <Text style={styles.label}>Ano:</Text>
-          <View style={styles.pickerWrapper}> 
+          <View style={styles.pickerWrapper}>
             <Picker
               selectedValue={anoSelecionado}
               style={styles.picker}
               onValueChange={(value) => setAnoSelecionado(value)}
             >
               {Array.from({ length: 5 }, (_, i) => {
-              const year = new Date().getFullYear() - i;
-              return <Picker.Item key={year} label={year.toString()} value={year} />;
-            })}
+                const year = new Date().getFullYear() - i;
+                return <Picker.Item key={year} label={year.toString()} value={year} />;
+              })}
             </Picker>
           </View>
         </View>
@@ -405,35 +405,37 @@ export default function AnnualReportScreen({ navigation, route }) {
           <Text style={styles.infoText}>Nenhuma medição encontrada. Selecione outro ano e toque em "Buscar Relatório".</Text>
         ) : (
           <>
-            {renderIndicadoresAnuais()} 
-          
-            {/* Gráfico principal */} 
+            {renderIndicadoresAnuais()}
+
+            {/* Gráfico principal */}
             <Text style={styles.graphTitle}>📊 Média de Peso por Mês</Text>
             {mediasMensais.filter(v => v > 0).length > 0 ? (
-                <LineChart
-                  data={{
-                    labels: meses,
-                    datasets: [
-                      { data: mediasMensais, color: () => "#0288d1", strokeWidth: 2 },
-                    ],
-                  }}
-                  width={screenWidth - 20}
-                  height={220}
-                  yAxisSuffix="kg"
-                  chartConfig={{
-                    backgroundColor: "#fff",
-                    backgroundGradientFrom: "#e0f7fa",
-                    backgroundGradientTo: "#b2ebf2",
-                    decimalPlaces: 1,
-                    color: (opacity = 1) => `rgba(0, 88, 136, ${opacity})`,
-                    labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-                  }}
-                  style={styles.graph}
-                  bezier
-                  fromZero
-                />
+              <LineChart
+                data={{
+                  labels: meses,
+                  datasets: [
+                    { data: mediasMensais, color: () => "#43a047", strokeWidth: 2 },
+                  ],
+                }}
+                width={screenWidth - 20}
+                height={220}
+                yAxisSuffix="kg"
+                chartConfig={{
+                  backgroundColor: "#fff",
+                  backgroundGradientFrom: "#eee",
+                  backgroundGradientTo: "#eee",
+                  decimalPlaces: 1,
+                  color: (opacity = 1) => `rgba(0, 88, 136, ${opacity})`,
+                  labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+                  fillShadowGradient: "#43a047", // 🔵 cor da área sob a linha
+                  fillShadowGradientOpacity: 0.5, // transparência
+                }}
+                style={styles.graph}
+                bezier
+                fromZero
+              />
             ) : (
-                <Text style={styles.infoText}>Dados insuficientes para gerar o gráfico.</Text>
+              <Text style={styles.infoText}>Dados insuficientes para gerar o gráfico.</Text>
             )}
           </>
         )}
@@ -461,7 +463,7 @@ export default function AnnualReportScreen({ navigation, route }) {
 
 // --- ESTILOS (completos) ---
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#e0f7fa" },
+  container: { flex: 1, backgroundColor: "#eee" },
   title: {
     fontSize: 24,
     fontWeight: "bold",
@@ -498,7 +500,7 @@ const styles = StyleSheet.create({
     width: 150,
   },
   fetchButton: {
-    backgroundColor: "#0288d1",
+    backgroundColor: "#2e7d32",
     borderRadius: 10,
     paddingVertical: 14,
     paddingHorizontal: 25,

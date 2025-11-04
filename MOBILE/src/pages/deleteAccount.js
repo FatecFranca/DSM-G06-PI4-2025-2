@@ -166,7 +166,7 @@ export default function DeleteAccountScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#eee',
   },
   keyboardContainer: {
     flex: 1,

@@ -304,7 +304,7 @@ export default function FuturePredictionScreen({ navigation, route }) {
                 Previsão para {format(selectedDate, "EEEE, dd 'de' MMMM", { locale: ptBR })}
               </Text>
 
-              <Text style={{ fontSize: 22, fontWeight: "800", color: "#0288d1" }}>
+              <Text style={{ fontSize: 22, fontWeight: "800", color: "#2e7d32" }}>
                 {resultadoPrevisao.media} kg
               </Text>
 
@@ -422,7 +422,7 @@ export default function FuturePredictionScreen({ navigation, route }) {
 
 // Reaproveitamos os estilos da sua tela original para manter o mesmo visual
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#e0f7fa" },
+  container: { flex: 1, backgroundColor: "#eee" },
   title: {
     fontSize: 24,
     fontWeight: "bold",
@@ -448,7 +448,7 @@ const styles = StyleSheet.create({
   },
   dateButtonText: { fontSize: 16, color: "#333" },
   fetchButton: {
-    backgroundColor: "#0288d1",
+    backgroundColor: "#2e7d32",
     borderRadius: 10,
     paddingVertical: 14,
     paddingHorizontal: 25,

@@ -452,7 +452,7 @@ export default function WeeklyReportScreen({ navigation, route }) {
 
   const chartData = {
     labels: chartLabels,
-    datasets: [{ data: chartValues, color: () => "#0288d1", strokeWidth: 2 }],
+    datasets: [{ data: chartValues, color: () => "#43a047", strokeWidth: 2 }],
   };
 
   const toggleBlock = (dayKey, blockStart) => {
@@ -592,11 +592,13 @@ export default function WeeklyReportScreen({ navigation, route }) {
                 yAxisSuffix=" kg"
                 chartConfig={{
                   backgroundColor: "#fff",
-                  backgroundGradientFrom: "#e0f7fa",
-                  backgroundGradientTo: "#b2ebf2",
+                  backgroundGradientFrom: "#eee",
+                  backgroundGradientTo: "#eee",
                   decimalPlaces: 1,
                   color: (opacity = 1) => `rgba(0, 88, 136, ${opacity})`,
                   labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+                  fillShadowGradient: "#43a047", // 🔵 cor da área sob a linha
+                  fillShadowGradientOpacity: 0.5, // transparência
                 }}
                 style={styles.graph}
                 bezier
@@ -638,7 +640,7 @@ export default function WeeklyReportScreen({ navigation, route }) {
                             ? leftVals.reduce((a, b) => a + b, 0) / leftVals.length
                             : 0;
                         }),
-                        color: () => "#1976d2", // Azul: Esquerda
+                        color: () => "#42be42ff", // Azul: Esquerda
                         strokeWidth: 2,
                       },
                       {
@@ -665,8 +667,8 @@ export default function WeeklyReportScreen({ navigation, route }) {
                   yAxisSuffix=" kg"
                   chartConfig={{
                     backgroundColor: "#fff",
-                    backgroundGradientFrom: "#e0f7fa",
-                    backgroundGradientTo: "#b2ebf2",
+                    backgroundGradientFrom: "#eee",
+                    backgroundGradientTo: "#eee",
                     decimalPlaces: 1,
                     color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
                     labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
@@ -751,7 +753,7 @@ export default function WeeklyReportScreen({ navigation, route }) {
                                                   const percentual = maiorPeso > 0 ? (diferenca / maiorPeso) * 100 : 0;
 
                                                   let posicao = "center";
-                                                  let cor = "#2196F3"; // Azul
+                                                  let cor = "#42be42ff"; // Azul
 
                                                   // Se o desequilíbrio for maior que 5%
                                                   if (percentual > 5) {
@@ -820,7 +822,7 @@ export default function WeeklyReportScreen({ navigation, route }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#e0f7fa" },
+  container: { flex: 1, backgroundColor: "#eee" },
   title: {
     fontSize: 24,
     fontWeight: "bold",
@@ -847,7 +849,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   modeButtonActive: {
-    backgroundColor: "#0288d1",
+    backgroundColor: "#2e7d32",
   },
   modeButtonText: {
     color: "#333",

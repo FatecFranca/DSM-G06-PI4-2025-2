@@ -354,7 +354,7 @@ export default function BackpackScreen({ navigation }) {
         <Ionicons
           name={showAddForm ? "chevron-up" : "chevron-down"}
           size={20}
-          color="#007bff"
+          color="#28a745"
         />
         <Text style={styles.toggleButtonText}>
           {showAddForm ? "Fechar Cadastro de Mochila" : "Cadastrar Nova Mochila"}
@@ -505,7 +505,7 @@ export default function BackpackScreen({ navigation }) {
                 <Text style={styles.modalButtonText}>Cancelar</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.modalButton, { backgroundColor: "#007bff" }]}
+                style={[styles.modalButton, { backgroundColor: "#28a745" }]}
                 onPress={handleConfirmEdit}
               >
                 <Text style={styles.modalButtonText}>Salvar</Text>
@@ -527,7 +527,7 @@ export default function BackpackScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#e0f7fa",
+    backgroundColor: "#eee",
     paddingTop: 50,
   },
   loadingContainer: {
@@ -628,7 +628,7 @@ const styles = StyleSheet.create({
     width: "100%",
   },
   startUsingButton: {
-    backgroundColor: "#007bff", 
+    backgroundColor: "#28a745", 
   },
   stopUsingButton: {
     backgroundColor: "#dc3545", 
@@ -710,10 +710,10 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
     marginBottom: 10,
     borderWidth: 1,
-    borderColor: "#007bff",
+    borderColor: "#228b3bff",
   },
   toggleButtonText: {
-    color: "#007bff",
+    color: "#228b3bff",
     fontWeight: "bold",
     fontSize: 16,
     marginLeft: 8,

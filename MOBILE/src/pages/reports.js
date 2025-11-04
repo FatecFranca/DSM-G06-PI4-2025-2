@@ -169,7 +169,7 @@ export default function ReportScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#e0f7fa",
+    backgroundColor: "#eee",
     paddingTop: 50,
   },
   loadingContainer: {

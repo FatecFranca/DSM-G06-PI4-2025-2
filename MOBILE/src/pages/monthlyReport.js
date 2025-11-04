@@ -423,7 +423,7 @@ export default function MonthlyReportScreen({ navigation, route }) {
     datasets: [
       {
         data: dailyAvgs.map((d) => d.total),
-        color: () => "#0288d1",
+        color: () => "#43a047",
       },
     ],
   };
@@ -553,7 +553,7 @@ export default function MonthlyReportScreen({ navigation, route }) {
           acimaLimite && styles.alertCard,
           {
             borderLeftWidth: 6,
-            borderLeftColor: tipo === "maior" ? "#0288d1" : "#43a047",
+            borderLeftColor: tipo === "maior" ? "#d32f2f" : "#43a047",
           },
         ]}
       >
@@ -636,11 +636,13 @@ export default function MonthlyReportScreen({ navigation, route }) {
                 yAxisSuffix=" kg"
                 chartConfig={{
                   backgroundColor: "#fff",
-                  backgroundGradientFrom: "#e0f7fa",
-                  backgroundGradientTo: "#b2ebf2",
+                  backgroundGradientFrom: "#eee",
+                  backgroundGradientTo: "#eee",
                   decimalPlaces: 1,
                   color: (opacity = 1) => `rgba(0, 88, 136, ${opacity})`,
                   labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+                  fillShadowGradient: "#43a047", // 🔵 cor da área sob a linha
+                  fillShadowGradientOpacity: 0.5, // transparência
                 }}
                 style={styles.graph}
                 bezier
@@ -664,7 +666,7 @@ export default function MonthlyReportScreen({ navigation, route }) {
                   datasets: [
                     {
                       data: dailyAvgsEsq, // Dados seguros (Esquerda)
-                      color: () => "#1976d2",
+                      color: () => "#42be42ff",
                       strokeWidth: 2,
                     },
                     {
@@ -680,8 +682,8 @@ export default function MonthlyReportScreen({ navigation, route }) {
                 yAxisSuffix=" kg"
                 chartConfig={{
                   backgroundColor: "#fff",
-                  backgroundGradientFrom: "#e0f7fa",
-                  backgroundGradientTo: "#b2ebf2",
+                  backgroundGradientFrom: "#eee",
+                  backgroundGradientTo: "#eee",
                   decimalPlaces: 1,
                   color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
                   labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
@@ -723,7 +725,7 @@ export default function MonthlyReportScreen({ navigation, route }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#e0f7fa" },
+  container: { flex: 1, backgroundColor: "#eee" },
   title: {
     fontSize: 24,
     fontWeight: "bold",
@@ -744,7 +746,7 @@ const styles = StyleSheet.create({
   },
   dateButtonText: { fontSize: 16, color: "#333" },
   fetchButton: {
-    backgroundColor: "#0288d1",
+    backgroundColor: "#2e7d32",
     borderRadius: 10,
     paddingVertical: 14,
     paddingHorizontal: 25,

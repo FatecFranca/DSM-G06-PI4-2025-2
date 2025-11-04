@@ -157,13 +157,13 @@ export default function ProfileScreen({ navigation }) {
                     extraScrollHeight={Platform.OS === "android" ? 0 : 0}
                     keyboardShouldPersistTaps="handled"
                     contentContainerStyle={[
-                        styles.scrollContainer,
+                        styles.scrollContainer, styles.container,
                         { flexGrow: 1, paddingBottom: 0 },
                     ]}
                     showsVerticalScrollIndicator={false}
                 >
                     <View style={styles.box}>
-                        <Text style={styles.title}>ALTERAR DADOS</Text>
+                        <Text style={styles.title}>MEU PERFIL</Text>
 
                         <TextInput
                             style={styles.input}
@@ -337,9 +337,9 @@ export default function ProfileScreen({ navigation }) {
 
 const styles = StyleSheet.create({
     container: {
-        paddingTop: 50,
+        paddingTop: 20,
         flex: 1,
-        backgroundColor: "#e0f7fa",
+        backgroundColor: "#eee",
     },
     scrollContainer: {
         alignItems: "center",
