@@ -92,7 +92,7 @@ export default function ReportsHomePage() {
                     <h2 className="text-xl font-semibold text-gray-800">{m.MochilaNome || m.MochilaDescricao}</h2>
                     <p className="text-gray-600 mt-2">Código: {m.MochilaCodigo}</p>
                     <div className="mt-4 flex justify-end">
-                      <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+                      <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-none border-2 hover:bg-green-200 transition duration-500 border-[#2e7d32] text-green-800">
                         Selecionar
                       </span>
                     </div>
