@@ -1,10 +1,9 @@
 "use client";
 
-import React from "react";
-import { useState, useEffect } from "react";
+import { useState, useEffect } from "react"; 
 import { useRouter } from "next/navigation";
 import { FiArrowLeft } from "react-icons/fi";
-import { useAuth } from "@/app/hooks/useAuth";
+import { useAuth } from "@/app/hooks/useAuth"; 
 import ProtectedRoute from "@/components/ProtectedRoutes/ProtectedRoute";
 import Header from "@/components/Header/Header";
 import Chart from "@/components/Chart/Chart";
@@ -16,23 +15,24 @@ function roundTo2(num) {
 }
 // --- FIM DA FUNÇÃO AUXILIAR ---
 
-export default function WeeklyReportPage({ params }) {
+export default function AnnualReportPage({ params }) { //  Nome da função corrigido
   const router = useRouter();
   const { authFetch } = useAuth();
 
   const anoAtual = new Date().getFullYear();
-
-  // Use React.use para resolver a Promise `params` (conforme o aviso anterior)
-  const resolvedParams = React.use(params);
-  const { mochilaCodigo } = resolvedParams;
+  //  Acesso direto ao params, não é uma Promise no App Router
+  const { mochilaCodigo } = params;
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [reportData, setReportData] = useState([]); // Dados para a tabela
+  const [reportData, setReportData] = useState([]); // Dados para a tabela (opcional)
   const [chartData, setChartData] = useState([]); // Dados para o gráfico
   // --- Estado para as estatísticas ---
   const [estatisticas, setEstatisticas] = useState(null);
   // --- Fim do estado para as estatísticas ---
+  // --- Estado para selecionar o ano ---
+  const [selectedYear, setSelectedYear] = useState(anoAtual);
+  // --- Fim do estado para selecionar o ano ---
 
   // --- FUNÇÃO PARA CALCULAR ESTATÍSTICAS ---
   const calcularEstatisticas = (valoresRaw) => {
@@ -115,53 +115,54 @@ export default function WeeklyReportPage({ params }) {
   };
   // --- FIM DA FUNÇÃO PARA CALCULAR ESTATÍSTICAS ---
 
-  useEffect(() => {
-    const fetchWeeklyReport = async () => {
-      try {
-        setLoading(true);
-        setError("");
-        setEstatisticas(null); // Limpa estatísticas anteriores
+  // --- FUNÇÃO PARA CARREGAR O RELATÓRIO ANUAL ---
+  const loadReport = async (mochilaCodigo, ano) => {
+    try {
+      setLoading(true);
+      setError("");
+      setEstatisticas(null); // Limpa estatísticas anteriores
 
-        // --- CHAMADA PARA A API PARA OBTER O RELATÓRIO ANUAL ---
-        const res = await authFetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/medicoes/anual/${anoAtual}/${mochilaCodigo}`
-        );
+      // --- CHAMADA PARA A API PARA OBTER O RELATÓRIO ANUAL ---
+      const res = await authFetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/medicoes/anual/${ano}/${mochilaCodigo}`
+      );
 
-        if (!res.ok) {
-          let errorMessage = `Erro ${res.status}`;
-          try {
-            const errorData = await res.json();
-            errorMessage = errorData.error || errorMessage;
-          } catch (e) {
-            console.error("[WeeklyReportPage] Erro ao parsear JSON de erro da API:", e);
-          }
-          throw new Error(errorMessage);
+      if (!res.ok) {
+        let errorMessage = `Erro ${res.status}`;
+        try {
+          const errorData = await res.json();
+          errorMessage = errorData.error || errorMessage;
+        } catch (e) {
+          console.error("[AnnualReportPage] Erro ao parsear JSON de erro da API:", e);
         }
+        throw new Error(errorMessage);
+      }
 
-        const rawData = await res.json();
-        console.log("[WeeklyReportPage] Dados brutos recebidos da API:", rawData);
+      const rawData = await res.json();
+      console.log("[AnnualReportPage] Dados brutos recebidos da API:", rawData);
 
-        // --- PROCESSAMENTO DOS DADOS ---
-        let dadosParaGrafico = [];
-        let pesosParaEstatisticas = []; // Array de números para calcular estatísticas
+      // --- PROCESSAMENTO DOS DADOS ---
+      let dadosParaGrafico = [];
+      let pesosParaEstatisticas = []; // Array de números para calcular estatísticas
 
-        if (Array.isArray(rawData)) {
-          dadosParaGrafico = rawData.map((medicao) => {
-            const pesoNum = parseFloat(medicao.MedicaoPeso);
-            pesosParaEstatisticas.push(pesoNum); // Adiciona ao array para estatísticas
-            return {
-              name: new Date(medicao.MedicaoData).toLocaleDateString("pt-BR"),
-              peso: pesoNum,
-              local: medicao.MedicaoLocal,
-              status: medicao.MedicaoStatus,
-            };
-          });
-        } else {
-          console.warn("[WeeklyReportPage] Resposta da API não é um array. Tentando processar como objeto.");
-          if (rawData && typeof rawData === "object") {
-            for (const [key, medicao] of Object.entries(rawData)) {
-              if (medicao && medicao.MedicaoData) {
-                const pesoNum = parseFloat(medicao.MedicaoPeso);
+      if (Array.isArray(rawData)) {
+        dadosParaGrafico = rawData.map((medicao) => {
+          const pesoNum = parseFloat(medicao.MedicaoPeso);
+          pesosParaEstatisticas.push(pesoNum); // Adiciona ao array para estatísticas
+          return {
+            name: new Date(medicao.MedicaoData).toLocaleDateString("pt-BR"), // Ex: "21/10/2025"
+            peso: pesoNum,
+            local: medicao.MedicaoLocal,
+            status: medicao.MedicaoStatus,
+          };
+        });
+      } else {
+        console.warn("[AnnualReportPage] Resposta da API não é um array. Tentando processar como objeto.");
+        if (rawData && typeof rawData === "object") {
+          for (const [key, medicao] of Object.entries(rawData)) {
+            if (medicao && medicao.MedicaoData) {
+              const pesoNum = parseFloat(medicao.MedicaoPeso);
+              if (!isNaN(pesoNum)) { // Verifica se o peso é um número válido antes de adicionar
                 pesosParaEstatisticas.push(pesoNum);
                 dadosParaGrafico.push({
                   name: key,
@@ -173,28 +174,42 @@ export default function WeeklyReportPage({ params }) {
             }
           }
         }
-
-        setChartData(dadosParaGrafico);
-        setReportData(rawData); // Para uso futuro (tabela, etc.)
-
-        // --- CALCULAR ESTATÍSTICAS ---
-        const stats = calcularEstatisticas(pesosParaEstatisticas);
-        setEstatisticas(stats);
-        // --- FIM DO CÁLCULO DAS ESTATÍSTICAS ---
-
-      } catch (err) {
-        console.error("[WeeklyReportPage] Erro ao carregar relatório:", err);
-        setError(err.message || "Falha ao carregar o relatório anual.");
-        setChartData([]);
-        setReportData([]);
-        setEstatisticas(null);
-      } finally {
-        setLoading(false);
       }
-    };
 
-    fetchWeeklyReport();
-  }, [authFetch, mochilaCodigo]);
+      setChartData(dadosParaGrafico);
+      setReportData(rawData); // Para uso futuro (tabela, etc.)
+
+      // --- CALCULAR ESTATÍSTICAS ---
+      const stats = calcularEstatisticas(pesosParaEstatisticas);
+      setEstatisticas(stats);
+      // --- FIM DO CÁLCULO DAS ESTATÍSTICAS ---
+
+    } catch (err) {
+      console.error("[AnnualReportPage] Erro ao carregar relatório:", err);
+      setError(err.message || "Falha ao carregar o relatório anual.");
+      setChartData([]);
+      setReportData([]);
+      setEstatisticas(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+  // --- FIM DA FUNÇÃO loadReport ---
+
+  // --- Carregar relatório ao montar ou quando ano/mochilaCodigo mudarem ---
+  useEffect(() => {
+    if (mochilaCodigo) {
+      loadReport(mochilaCodigo, selectedYear);
+    }
+  }, [mochilaCodigo, selectedYear]);
+
+  // --- Manipulador para mudar o ano ---
+  const handleYearChange = (e) => {
+    const novoAno = Number(e.target.value);
+    setSelectedYear(novoAno);
+    // O useEffect acima cuidará de carregar os dados para o novo ano
+  };
+  // --- Fim do manipulador ---
 
   if (loading) {
     return (
@@ -246,78 +261,60 @@ export default function WeeklyReportPage({ params }) {
             </div>
           </div>
 
+          {/* Seletor de Ano */}
+          <div className="mb-6 p-4 bg-white rounded-lg shadow-md">
+            <label htmlFor="yearSelector" className="block text-sm font-medium text-gray-700 mb-2">
+              Selecione o Ano
+            </label>
+            <select
+              id="yearSelector"
+              value={selectedYear}
+              onChange={handleYearChange}
+              className="p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+            >
+              {[...Array(5)].map((_, i) => {
+                const ano = new Date().getFullYear() - 2 + i; // Ex: de 2023 a 2027
+                return (
+                  <option key={ano} value={ano}>
+                    {ano}
+                  </option>
+                );
+              })}
+            </select>
+          </div>
+
+          {/* --- SEÇÃO DE ESTATÍSTICAS (Acima do gráfico) --- */}
+          {estatisticas ? (
+            <div className="bg-white p-6 rounded-lg shadow-md mb-8">
+              <h2 className="text-xl font-semibold mb-4">Indicadores Estatísticos</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                <StatCard title="Média (kg)" value={estatisticas.media} />
+                <StatCard title="Mediana (kg)" value={estatisticas.mediana} />
+                <StatCard title="Moda (kg)" value={estatisticas.moda} />
+                <StatCard title="Desvio Padrão (kg)" value={estatisticas.desvioPadrao} />
+                <StatCard title="Assimetria" value={estatisticas.assimetria} />
+                <StatCard title="Curtose" value={estatisticas.curtose} />
+                <StatCard title="P(X > μ) (%)" value={`${estatisticas.probAcimaMedia}%`} />
+                <StatCard title="Regressão Linear" value={estatisticas.regressao.equacao} />
+              </div>
+            </div>
+          ) : (
+            <div className="bg-white p-6 rounded-lg shadow-md mb-8">
+              <p className="text-gray-500 text-center">Nenhuma medição disponível para cálculo estatístico.</p>
+            </div>
+          )}
+          {/* --- FIM DA SEÇÃO DE ESTATÍSTICAS --- */}
+
           {/* Conteúdo do Relatório */}
           <div className="mt-8 space-y-8">
             {/* Gráfico */}
-            <Chart dados={chartData} titulo="Dados do Relatório Anual" />
-
-            {/* --- SEÇÃO DE ESTATÍSTICAS --- */}
-            {estatisticas ? (
-              <div className="bg-white p-6 rounded-lg shadow-md">
-                <h2 className="text-xl font-semibold mb-4">Indicadores Estatísticos</h2>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <StatCard title="Média" value={`${estatisticas.media} kg`} />
-                  <StatCard title="Mediana" value={`${estatisticas.mediana} kg`} />
-                  <StatCard title="Moda" value={estatisticas.moda} />
-                  <StatCard title="Desvio Padrão" value={`${estatisticas.desvioPadrao} kg`} />
-                  <StatCard title="Assimetria" value={estatisticas.assimetria} />
-                  <StatCard title="Curtose" value={estatisticas.curtose} />
-                  <StatCard title="Regressão" value={estatisticas.regressao.equacao} />
-                </div>
-              </div>
-            ) : (
-              <p className="text-gray-500 text-center">Nenhuma medição disponível para cálculo estatístico.</p>
-            )}
-            {/* --- FIM DA SEÇÃO DE ESTATÍSTICAS --- */}
-
-            {/* Tabela de Dados (Exemplo - descomente e adapte conforme necessário) */}
-            {/* 
-            <div className="bg-white p-6 rounded-lg shadow-md">
-              <h2 className="text-xl font-semibold mb-4">Dados Detalhados</h2>
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data/Hora</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Peso (kg)</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Local</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {reportData.length > 0 ? (
-                      reportData.map((item, index) => (
-                        <tr key={index}>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {new Date(item.MedicaoData).toLocaleString('pt-BR')}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                            {item.MedicaoPeso}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {item.MedicaoLocal}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {item.MedicaoStatus}
-                          </td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td colSpan="4" className="px-6 py-4 text-center text-sm text-gray-500">
-                          Nenhum dado disponível.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-            */}
+            <Chart
+              dados={chartData}
+              titulo={`Dados do Relatório Anual - ${selectedYear}`}
+            />
           </div>
         </div>
       </main>
     </ProtectedRoute>
   );
 }
-
