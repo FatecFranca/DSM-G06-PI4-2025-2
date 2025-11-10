@@ -1,7 +1,6 @@
-import { PrismaClient } from "@prisma/client";
 import { verificarToken } from '../utils.js';
 
-const prisma = new PrismaClient();
+import { prisma } from '../prisma.js';
 
 // Listar todos os alertas (teste, desativar depois)
 /*
@@ -104,11 +103,10 @@ export async function listarAlertasMedicao(req, res) {
 export async function obterAlerta(req, res) {
   try {
 
-    let usuario = null;
-    if (! await verificarToken(req)) {
-        return res.status(401).json({ error: 'Usuário não autenticado' });
-    }else{
-        usuario = await verificarToken(req);
+    let usuario = await verificarToken(req);
+
+    if (!usuario) {
+      return res.status(401).json({ error: 'Usuário não autenticado' });
     }
 
     const { id } = req.params;
@@ -146,8 +144,6 @@ export async function obterAlerta(req, res) {
   } catch (error) {
     console.error("Erro ao obter alerta:", error);
     return res.status(500).json({ error: "Erro ao obter alerta" });
-  } finally {
-      await prisma.$disconnect();
   }
 }
 
@@ -156,11 +152,10 @@ export async function obterAlerta(req, res) {
 export async function atualizarAlerta(req, res) {
   try {
 
-    let usuario = null;
-    if (! await verificarToken(req)) {
-        return res.status(401).json({ error: 'Usuário não autenticado' });
-    }else{
-        usuario = await verificarToken(req);
+    let usuario = await verificarToken(req);
+
+    if (!usuario) {
+      return res.status(401).json({ error: 'Usuário não autenticado' });
     }
 
     const UsuarioId = Number(usuario.UsuarioId);
@@ -212,8 +207,6 @@ export async function atualizarAlerta(req, res) {
   } catch (error) {
     console.error("Erro ao atualizar alerta:", error);
     return res.status(500).json({ error: "Erro ao atualizar alerta" });
-  } finally {
-      await prisma.$disconnect();
   }
 }
 
@@ -222,11 +215,10 @@ export async function atualizarAlerta(req, res) {
 export async function listarAlertasUsuario(req, res) {
   try {
     
-    let dadosUsuario = null;
-    if (! await verificarToken(req)) {
-        return res.status(401).json({ error: 'Usuário não autenticado' });
-    }else{
-        dadosUsuario = await verificarToken(req);
+    let dadosUsuario = await verificarToken(req);
+
+    if (!dadosUsuario) {
+      return res.status(401).json({ error: 'Usuário não autenticado' });
     }
 
     const UsuarioId = Number(dadosUsuario.UsuarioId);
@@ -263,8 +255,6 @@ export async function listarAlertasUsuario(req, res) {
   } catch (error) {
     console.error("Erro ao listar alertas: ", error);
     return res.status(500).json({ error: "Erro ao listar alertas" });
-  } finally {
-      await prisma.$disconnect();
   }
 }
 
@@ -273,11 +263,10 @@ export async function listarAlertasUsuario(req, res) {
 export async function deletarAlerta(req, res) {
   try {
 
-    let usuario = null;
-    if (! await verificarToken(req)) {
-        return res.status(401).json({ error: 'Usuário não autenticado' });
-    }else{
-        usuario = await verificarToken(req);
+    let usuario = await verificarToken(req);
+
+    if (!usuario) {
+      return res.status(401).json({ error: 'Usuário não autenticado' });
     }
 
     const AlertaId = Number(req.params.id);
@@ -323,7 +312,5 @@ export async function deletarAlerta(req, res) {
   } catch (error) {
     console.error("Erro ao deletar alerta:", error);
     return res.status(500).json({ error: "Erro ao deletar alerta" });
-  } finally {
-      await prisma.$disconnect();
   }
 }

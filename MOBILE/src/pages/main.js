@@ -1,3 +1,5 @@
+// main.js
+
 import React, { useEffect, useContext } from "react";
 import { View, Text, StyleSheet, Image, ActivityIndicator, ToastAndroid, BackHandler, Alert } from "react-native";
 import { delay } from "../utils/validacoes";

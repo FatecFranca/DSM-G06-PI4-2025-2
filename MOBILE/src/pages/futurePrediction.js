@@ -1,4 +1,5 @@
-// ForecastScreen.js
+// futurePrediction.js.
+
 import React, { useState, useEffect, useRef } from "react";
 import {
   View,
@@ -18,7 +19,7 @@ import { ptBR } from "date-fns/locale";
 import { Ionicons } from "@expo/vector-icons";
 
 import { LINKAPI, PORTAPI } from "../utils/global";
-import { validarTokens, pegarTokens, obterDadosUsuario, roundTo2 } from "../utils/validacoes";
+import { validarTokens, pegarTokens, obterDadosUsuario } from "../utils/validacoes";
 
 import BottomNav from "../components/BottomNav";
 import SettingsModal from "../components/SettingsModal";
@@ -33,7 +34,6 @@ export default function FuturePredictionScreen({ navigation, route }) {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [medicoes, setMedicoes] = useState([]);
   const [erro, setErro] = useState("");
   const [resultadoPrevisao, setResultadoPrevisao] = useState(null);
   const [motivoNaoCalcular, setMotivoNaoCalcular] = useState("");
@@ -44,7 +44,6 @@ export default function FuturePredictionScreen({ navigation, route }) {
   const animVal = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
-    // opcional: obter dados do usuário (peso, etc) caso queira usar no futuro
     bucarDadosUsuario();
   }, []);
 
@@ -52,9 +51,8 @@ export default function FuturePredictionScreen({ navigation, route }) {
     try {
       const response = await obterDadosUsuario(navigation);
       if (response === "false") return;
-      // por enquanto não usamos, mas mantemos compatibilidade
     } catch (e) {
-      // silent
+
     }
   };
 
@@ -80,54 +78,11 @@ export default function FuturePredictionScreen({ navigation, route }) {
   });
   const animatedOpacity = animVal;
 
-  // Calcula estatísticas populacionais para um array de números
-  const calcularEstatisticasPopulacionais = (valoresRaw) => {
-    const valores = valoresRaw.filter((v) => typeof v === "number" && !isNaN(v));
-    if (!valores.length) return null;
-
-    const n = valores.length;
-    const somatorio = valores.reduce((a, b) => a + b, 0);
-    const media = somatorio / n;
-
-    const sorted = [...valores].sort((a, b) => a - b);
-    const mediana = n % 2 === 0 ? (sorted[n / 2 - 1] + sorted[n / 2]) / 2 : sorted[Math.floor(n / 2)];
-
-    const freq = {};
-    valores.forEach((v) => {
-      const key = roundTo2(v).toString();
-      freq[key] = (freq[key] || 0) + 1;
-    });
-    const maxFreq = Math.max(...Object.values(freq));
-    const modaArray = Object.keys(freq).filter((k) => freq[k] === maxFreq).map((k) => Number(k));
-
-    // variância populacional
-    const variancia = valores.reduce((a, b) => a + Math.pow(b - media, 2), 0) / n;
-    const desvioPadrao = Math.sqrt(variancia);
-
-    const denomSkew = desvioPadrao === 0 ? 1 : Math.pow(desvioPadrao, 3);
-    const denomKurt = desvioPadrao === 0 ? 1 : Math.pow(desvioPadrao, 4);
-
-    const assimetria = (valores.reduce((a, b) => a + Math.pow(b - media, 3), 0) / n) / denomSkew;
-    const curtose = (valores.reduce((a, b) => a + Math.pow(b - media, 4), 0) / n) / denomKurt - 3;
-
-    return {
-      media: roundTo2(media),
-      mediana: roundTo2(mediana),
-      moda: modaArray.length ? modaArray.join(", ") : "—",
-      desvioPadrao: roundTo2(desvioPadrao),
-      assimetria: roundTo2(assimetria),
-      curtose: roundTo2(curtose),
-      totalMedicoes: n,
-      totalPeso: roundTo2(somatorio),
-    };
-  };
-
-  // Função principal: busca todas medições e calcula previsão baseando no dia da semana do selectedDate
+  // 🟢 NOVA FUNÇÃO: Busca previsão calculada pela API
   const calcularPrevisaoPorDiaSemana = async () => {
     try {
       setLoading(true);
       setErro("");
-      setMedicoes([]);
       setResultadoPrevisao(null);
       setMotivoNaoCalcular("");
       setEstatisticas(null);
@@ -141,109 +96,41 @@ export default function FuturePredictionScreen({ navigation, route }) {
       const tokens = await pegarTokens();
       const { accessToken } = tokens;
 
-      const response = await fetch(`${LINKAPI}${PORTAPI}/medicoes/geral/${codigo}`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
+      // Formata a data para YYYY-MM-DD
+      const dataFormatada = format(selectedDate, "yyyy-MM-dd");
+
+      const response = await fetch(
+        `${LINKAPI}${PORTAPI}/medicoes/previsao/${codigo}/${dataFormatada}`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
+          },
+        }
+      );
 
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
-        setErro(data.error || "Erro ao obter medições gerais");
+        setErro(data.error || "Erro ao calcular previsão");
         return;
       }
 
       const dados = await response.json();
-      setMedicoes(dados);
 
-      // Determina o dia da semana do date selecionado (0=Domingo ... 6=Sábado)
-      const diaEscolhido = new Date(selectedDate);
-      const weekdayEscolhido = diaEscolhido.getDay();
-
-      // Filtra todas as medições que têm o mesmo dia da semana
-      const medicoesMesmoWeekday = dados.filter((m) => {
-        const d = new Date(m.MedicaoData);
-        return d.getDay() === weekdayEscolhido;
-      });
-
-      if (medicoesMesmoWeekday.length === 0) {
-        setMotivoNaoCalcular("Não existem medições com o mesmo dia da semana do escolhido.");
+      if (dados.error) {
+        setErro(dados.error);
         return;
       }
 
-      // Agrupar por data (yyyy-mm-dd) — cada entrada aqui será um dia (observação)
-      const mapaPorData = {};
-      medicoesMesmoWeekday.forEach((m) => {
-        const d = new Date(m.MedicaoData);
-        const y = d.getFullYear();
-        const mm = String(d.getMonth() + 1).padStart(2, "0");
-        const dd = String(d.getDate()).padStart(2, "0");
-        const key = `${y}-${mm}-${dd}`;
-        if (!mapaPorData[key]) mapaPorData[key] = [];
-        mapaPorData[key].push(m);
-      });
-
-      // Para cada data: agrupar por hora:minuto e calcular média esquerda/direita e somar as médias => total diário
-      const totaisPorDia = Object.entries(mapaPorData).map(([dataStr, lista]) => {
-        // agrupa por hora:minuto
-        const mapaHoraMin = {};
-        lista.forEach((item) => {
-          const d = new Date(item.MedicaoData);
-          const h = String(d.getHours()).padStart(2, "0");
-          const min = String(d.getMinutes()).padStart(2, "0");
-          const chave = `${h}:${min}`;
-          if (!mapaHoraMin[chave]) mapaHoraMin[chave] = [];
-          mapaHoraMin[chave].push(item);
-        });
-
-        // para cada hora:minuto, calcular média das medições esquerda/direita
-        const mediasHorarias = Object.values(mapaHoraMin).map((arr) => {
-          const esquerda = arr.filter((v) => v.MedicaoLocal?.toLowerCase().includes("esquerda"));
-          const direita = arr.filter((v) => v.MedicaoLocal?.toLowerCase().includes("direita"));
-
-          const pesoEsq =
-            esquerda.reduce((acc, v) => acc + Number(v.MedicaoPeso || 0), 0) / (esquerda.length || 1);
-          const pesoDir =
-            direita.reduce((acc, v) => acc + Number(v.MedicaoPeso || 0), 0) / (direita.length || 1);
-
-          return pesoEsq + pesoDir;
-        });
-
-        // Média do dia = soma das médias horárias ÷ quantidade de horários com medição
-        const mediaDia = mediasHorarias.reduce((a, b) => a + b, 0) / mediasHorarias.length;
-
-        return roundTo2(mediaDia);
-      });
-
-
-      // Agora temos um array totaisPorDia; usamos como POPULAÇÃO
-      if (totaisPorDia.length <= 1) {
-        setMotivoNaoCalcular("Dados insuficientes: é necessário pelo menos 2 dias com medições para esse dia da semana.");
-        const stats = calcularEstatisticasPopulacionais(totaisPorDia);
-        setEstatisticas(stats);
-        return;
+      // 🟢 AGORA A API JÁ RETORNA TUDO PRÉ-CALCULADO
+      setEstatisticas(dados.estatisticas);
+      
+      if (dados.previsao) {
+        setResultadoPrevisao(dados.previsao);
+      } else {
+        setMotivoNaoCalcular(dados.motivo || "Não foi possível gerar a previsão.");
       }
-
-      const stats = calcularEstatisticasPopulacionais(totaisPorDia);
-      setEstatisticas(stats);
-
-      // Critério de validade: assimetria populacional em módulo <= 1
-      const skew = stats?.assimetria ?? 0;
-      if (Math.abs(skew) > 1) {
-        setMotivoNaoCalcular(
-          `Os dados apresentam alta assimetria (assimetria = ${stats.assimetria}). Isso reduz a confiabilidade da previsão.`
-        );
-        return;
-      }
-
-      // Se válido, previsão = média populacional
-      setResultadoPrevisao({
-        media: stats.media,
-        n: stats.totalMedicoes,
-        detalhes: stats,
-      });
 
     } catch (e) {
       console.error(e);
@@ -341,24 +228,11 @@ export default function FuturePredictionScreen({ navigation, route }) {
               )}
             </View>
           </View>
-        ) : medicoes.length === 0 ? (
-          <Text style={styles.infoText}>Escolha uma data e toque em "Calcular Previsão".</Text>
         ) : (
-          // Caso existam medições, mas ainda não calculou (estado inicial pós-busca) mostramos breve sumário
-          <View style={{ marginHorizontal: 12, marginTop: 12 }}>
-            <View style={[styles.blockContainer, { padding: 12 }]}>
-              <Text style={{ fontSize: 16, fontWeight: "700", color: "#00695c" }}>Medições carregadas</Text>
-              <Text style={{ marginTop: 8, color: "#444" }}>
-                Total de medições associadas à mochila: {medicoes.length}
-              </Text>
-              <Text style={{ marginTop: 8, color: "#666" }}>
-                Toque em "Calcular Previsão" para gerar a previsão com base no dia da semana selecionado.
-              </Text>
-            </View>
-          </View>
+          <Text style={styles.infoText}>Escolha uma data e toque em "Calcular Previsão".</Text>
         )}
 
-        {/* Indicadores expansíveis (mesmo visual do DailyReport) */}
+        {/* Indicadores expansíveis */}
         {estatisticas && (
           <View style={styles.statsOuter}>
             <TouchableOpacity style={styles.statsHeader} onPress={toggleStats} activeOpacity={0.8}>
@@ -605,13 +479,16 @@ const styles = StyleSheet.create({
   },
   statCard: {
     backgroundColor: "#fff",
-    width: 150,
+    minWidth: 150,           // 🔹 largura mínima, mas permite crescer
+    maxWidth: 1000,           // 🔹 limite opcional (pode ajustar)
     marginRight: 10,
     borderRadius: 10,
-    padding: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     elevation: 2,
     borderLeftWidth: 6,
     borderLeftColor: "#4CAF50",
+    flexShrink: 0,           // 🔹 impede que o card reduza tamanho
   },
   statCardTitle: {
     fontSize: 13,

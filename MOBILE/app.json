@@ -4,7 +4,7 @@
     "slug": "mochila-inteligente",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./src/assets/mochila-PI-sem-fundo.png",
+    "icon": ".assets/icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {

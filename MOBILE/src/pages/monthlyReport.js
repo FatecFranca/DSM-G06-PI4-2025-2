@@ -30,132 +30,6 @@ import SettingsModal from "../components/SettingsModal";
 
 const screenWidth = Dimensions.get("window").width;
 
-// --- Funções Auxiliares (Movidas para fora para evitar recriação) ---
-
-const localSide = (local) => {
-  if (!local) return "outro";
-  const l = local.toString().toLowerCase();
-  if (l.includes("esquer")) return "esquerda";
-  if (l.includes("direit")) return "direita";
-  if (l.includes("amb")) return "ambos";
-  return "outro";
-};
-
-const groupByDay = (dados) => {
-  const map = {};
-  dados.forEach((m) => {
-    const date = parseISO(m.MedicaoData);
-    const key = format(date, "yyyy-MM-dd");
-    if (!map[key]) map[key] = [];
-    map[key].push(m);
-  });
-  return map;
-};
-
-const calcularEstatisticas = (valoresRaw) => {
-  const valores = valoresRaw.filter((v) => typeof v === "number" && Number.isFinite(v)); // Ultra-seguro
-  if (!valores.length) return null;
-
-  const n = valores.length;
-  const somatorio = valores.reduce((a, b) => a + b, 0);
-  const media = somatorio / n;
-
-  const sorted = [...valores].sort((a, b) => a - b);
-  const mediana =
-    n % 2 === 0
-      ? (sorted[n / 2 - 1] + sorted[n / 2]) / 2
-      : sorted[Math.floor(n / 2)];
-
-  const freq = {};
-  valores.forEach((v) => {
-    const key = roundTo2(v).toString();
-    freq[key] = (freq[key] || 0) + 1;
-  });
-  const maxFreq = Math.max(...Object.values(freq));
-  const modaArray = Object.keys(freq).filter((k) => freq[k] === maxFreq).map((k) => Number(k));
-
-  const variancia =
-    valores.reduce((a, b) => a + Math.pow(b - media, 2), 0) / n;
-  const desvioPadrao = Math.sqrt(variancia);
-
-  const denomSkew = desvioPadrao === 0 ? 1 : Math.pow(desvioPadrao, 3);
-  const denomKurt = desvioPadrao === 0 ? 1 : Math.pow(desvioPadrao, 4);
-
-  const assimetria =
-    valores.reduce((a, b) => a + Math.pow(b - media, 3), 0) / n / denomSkew;
-
-  const curtose =
-    valores.reduce((a, b) => a + Math.pow(b - media, 4), 0) / n / denomKurt - 3;
-
-  return {
-    media: roundTo2(media),
-    mediana: roundTo2(mediana),
-    moda: modaArray.length ? modaArray.join(", ") : "—",
-    desvioPadrao: roundTo2(desvioPadrao),
-    assimetria: roundTo2(assimetria),
-    curtose: roundTo2(curtose),
-  };
-};
-
-// --- Função de Regressão Linear (para prever tendência do peso médio diário) ---
-const calcularRegressaoLinear = (valores) => {
-  if (!valores || valores.length < 2) return null;
-
-  const n = valores.length;
-  const xs = Array.from({ length: n }, (_, i) => i + 1);
-  const ys = valores.map(v => Number(v));
-
-  const mediaX = xs.reduce((a, b) => a + b, 0) / n;
-  const mediaY = ys.reduce((a, b) => a + b, 0) / n;
-
-  const numerador = xs.reduce((sum, x, i) => sum + (x - mediaX) * (ys[i] - mediaY), 0);
-  const denominador = xs.reduce((sum, x) => sum + Math.pow(x - mediaX, 2), 0);
-
-  if (denominador === 0) return null;
-
-  const a = numerador / denominador; // inclinação
-  const b = mediaY - a * mediaX;     // intercepto
-
-  return { a: Number(a.toFixed(2)), b: Number(b.toFixed(2)) };
-};
-
-
-// 🎯 Versão ULTRA-SEGURA da função para evitar Infinity no cálculo da média
-const getDailySideAvgs = (medicoes, side) => {
-  if (!medicoes || medicoes.length === 0) return [];
-
-  const grouped = groupByDay(medicoes);
-
-  return Object.keys(grouped)
-    .sort()
-    .map((day) => {
-      const items = grouped[day];
-
-      const sideItems = items
-        .filter(m => {
-          const local = m.MedicaoLocal?.toLowerCase();
-          const targetSide = side.toLowerCase();
-          return local && (local.includes(targetSide) || local.includes("ambos"));
-        })
-        .map(m => Number(m.MedicaoPeso || 0));
-
-      const sum = sideItems.reduce((a, b) => a + b, 0);
-
-      // Se sideItems.length for 0, avg é 0. Se for divisão por zero (não deveria ocorrer), forçamos 0.
-      let avg = sideItems.length
-        ? sum / sideItems.length
-        : 0;
-
-      // Filtro final: se por alguma razão for NaN ou Infinity, retorna 0
-      if (!Number.isFinite(avg)) {
-        avg = 0;
-      }
-
-      return roundTo2(avg);
-    });
-};
-
-
 // --- Componente Principal ---
 
 export default function MonthlyReportScreen({ navigation, route }) {
@@ -166,15 +40,18 @@ export default function MonthlyReportScreen({ navigation, route }) {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [loading, setLoading] = useState(false);
+  // isProcessing foi removido pois o processamento é feito na API
   const [erro, setErro] = useState("");
-  const [medicoes, setMedicoes] = useState([]);
-  const [pesoUsuario, setPesoUsuario] = useState(0);
-  const [porcentagemMaxima, setPorcentagemMaxima] = useState(10);
 
+  // Estado para armazenar o objeto de estatísticas calculado pela API
   const [estatisticas, setEstatisticas] = useState(null);
 
+  // Estado para armazenar o objeto de dados processados calculado pela API
   const [dadosProcessados, setDadosProcessados] = useState({
     dailyAvgs: [],
+    dailyLabels: [], // Adicionado para rótulos de dias
+    dailyAvgsEsq: [], // Adicionado para gráfico comparativo
+    dailyAvgsDir: [], // Adicionado para gráfico comparativo
     maiorEsq: null,
     maiorDir: null,
     menorEsq: null,
@@ -187,6 +64,10 @@ export default function MonthlyReportScreen({ navigation, route }) {
 
   const [statsExpanded, setStatsExpanded] = useState(true);
   const animVal = useRef(new Animated.Value(1)).current;
+
+  // Dados do usuário são apenas auxiliares para o front-end exibir o limite
+  const [pesoUsuario, setPesoUsuario] = useState(0);
+  const [porcentagemMaxima, setPorcentagemMaxima] = useState(10);
 
   useEffect(() => {
     bucarDadosUsuario();
@@ -215,154 +96,22 @@ export default function MonthlyReportScreen({ navigation, route }) {
     if (date) setSelectedDate(date);
   };
 
-
-  // Função processarMedicoes
-  const processarMedicoes = (dados, pesoUsuario, porcentagemMaxima) => {
-    if (!dados || dados.length === 0) {
-      setEstatisticas(null);
-      setDadosProcessados({
-        dailyAvgs: [],
-        maiorEsq: null,
-        maiorDir: null,
-        menorEsq: null,
-        menorDir: null,
-        totalMedicoes: 0,
-        mediçõesAcimaLimite: 0,
-        diasComMedicao: 0,
-        pesoMaximoPermitido: 0,
-      });
-      return;
-    }
-
-    const grouped = groupByDay(dados);
-
-    let maiorEsq = null;
-    let maiorDir = null;
-    let menorEsq = null;
-    let menorDir = null;
-    let totalMedicoes = 0;
-    let mediçõesAcimaLimite = 0;
-
-    const totaisMensais = [];
-
-    const pesoMaximoPermitido = (pesoUsuario * (porcentagemMaxima / 100)) / 2;
-
-    const dailyAvgs = [];
-
-    Object.keys(grouped)
-      .sort()
-      .forEach((day) => {
-        const items = grouped[day];
-        const left = [];
-        const right = [];
-
-        // --- Cálculo de Totais por Timestamp para as Estatísticas ---
-        const mapaHoraMinuto = {};
-        items.forEach(item => {
-          const d = new Date(item.MedicaoData);
-          const chave = `${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}`;
-
-          if (!mapaHoraMinuto[chave]) mapaHoraMinuto[chave] = [];
-          mapaHoraMinuto[chave].push(item);
-        });
-
-        Object.values(mapaHoraMinuto).forEach(lista => {
-          const esq = lista.filter(v => localSide(v.MedicaoLocal) === "esquerda");
-          const dir = lista.filter(v => localSide(v.MedicaoLocal) === "direita");
-
-          const pesoEsq = esq.reduce((acc, v) => acc + Number(v.MedicaoPeso || 0), 0) / (esq.length || 1);
-          const pesoDir = dir.reduce((acc, v) => acc + Number(v.MedicaoPeso || 0), 0) / (dir.length || 1);
-
-          const total = pesoEsq + pesoDir;
-          // Garantindo que seja finito antes de adicionar
-          if (Number.isFinite(total)) {
-            totaisMensais.push(roundTo2(total));
-          }
-        });
-        // --- Fim Cálculo de Totais por Timestamp
-
-        items.forEach((m) => {
-          const side = localSide(m.MedicaoLocal);
-          const peso = Number(m.MedicaoPeso || 0);
-          totalMedicoes++;
-
-          if (peso > pesoMaximoPermitido) {
-            mediçõesAcimaLimite++;
-          }
-
-          if (side === "esquerda" || side === "ambos") {
-            left.push(peso);
-          }
-          if (side === "direita" || side === "ambos") {
-            right.push(peso);
-          }
-
-          const data = parseISO(m.MedicaoData);
-
-          if (side === "esquerda" || side === "ambos") {
-            if (!maiorEsq || peso > maiorEsq.peso)
-              maiorEsq = { peso, data, lado: "esquerda" };
-            if (!menorEsq || peso < menorEsq.peso)
-              menorEsq = { peso, data, lado: "esquerda" };
-          }
-          if (side === "direita" || side === "ambos") {
-            if (!maiorDir || peso > maiorDir.peso)
-              maiorDir = { peso, data, lado: "direita" };
-            if (!menorDir || peso < menorDir.peso)
-              menorDir = { peso, data, lado: "direita" };
-          }
-        });
-
-        const mediaEsq = left.length
-          ? left.reduce((a, b) => a + b, 0) / left.length
-          : 0;
-        const mediaDir = right.length
-          ? right.reduce((a, b) => a + b, 0) / right.length
-          : 0;
-
-        const totalDiario = mediaEsq + mediaDir;
-
-        // Garantindo que 'total' seja finito
-        let safeTotalDiario = totalDiario;
-        if (!Number.isFinite(safeTotalDiario)) {
-          safeTotalDiario = 0;
-        }
-
-        dailyAvgs.push({
-          dia: format(parseISO(day), "dd"),
-          total: Number(safeTotalDiario.toFixed(2)),
-        });
-      });
-
-    const stats = calcularEstatisticas(totaisMensais);
-
-    // --- Cálculo da Regressão Linear com base nos totais diários ---
-    const totaisDiarios = dailyAvgs.map((d) => d.total).filter((v) => Number.isFinite(v));
-    const regressao = calcularRegressaoLinear(totaisDiarios);
-
-    setEstatisticas({ ...stats, regressao });
-
-    const diasComMedicao = Object.keys(grouped).length;
-
-    setDadosProcessados({
-      dailyAvgs,
-      maiorEsq,
-      maiorDir,
-      menorEsq,
-      menorDir,
-      totalMedicoes,
-      mediçõesAcimaLimite,
-      diasComMedicao,
-      pesoMaximoPermitido,
-    });
-  };
+  // A função processarMedicoes e suas auxiliares foram REMOVIDAS daqui
+  // e movidas para a API.
 
   const buscarRelatorioMensal = async () => {
     try {
       setLoading(true);
       setErro("");
-      setMedicoes([]);
+
+      // Limpa os estados antes de buscar
       setEstatisticas(null);
+      setDadosProcessados({
+        dailyAvgs: [], dailyLabels: [], dailyAvgsEsq: [], dailyAvgsDir: [],
+        maiorEsq: null, maiorDir: null, menorEsq: null, menorDir: null,
+        totalMedicoes: 0, mediçõesAcimaLimite: 0, diasComMedicao: 0,
+        pesoMaximoPermitido: 0,
+      });
 
       const resposta = await validarTokens(0, navigation);
       if (resposta !== "true")
@@ -391,8 +140,15 @@ export default function MonthlyReportScreen({ navigation, route }) {
         return;
       }
 
-      const dados = await response.json();
-      setMedicoes(dados || []);
+      // Recebe o objeto JÁ PROCESSADO da API
+      const resultado = await response.json();
+
+      // Atualiza os estados diretamente com os dados calculados
+      setEstatisticas(resultado.estatisticas);
+      setDadosProcessados(resultado.dadosProcessados);
+
+      // Remove a chamada de processamento local
+
     } catch (e) {
       console.error(e);
       setErro("Erro ao conectar ao servidor.");
@@ -401,13 +157,12 @@ export default function MonthlyReportScreen({ navigation, route }) {
     }
   };
 
-  // useEffect para processamento (Corrige o "Too many re-renders")
-  useEffect(() => {
-    processarMedicoes(medicoes, pesoUsuario, porcentagemMaxima);
-  }, [medicoes, pesoUsuario, porcentagemMaxima]);
 
   const {
     dailyAvgs,
+    dailyLabels, // Novo campo da API
+    dailyAvgsEsq, // Novo campo da API
+    dailyAvgsDir, // Novo campo da API
     maiorEsq,
     maiorDir,
     menorEsq,
@@ -418,19 +173,12 @@ export default function MonthlyReportScreen({ navigation, route }) {
     pesoMaximoPermitido,
   } = dadosProcessados;
 
-  const chartData = {
-    labels: dailyAvgs.map((d) => d.dia),
-    datasets: [
-      {
-        data: dailyAvgs.map((d) => d.total),
-        color: () => "#43a047",
-      },
-    ],
-  };
+  // O chartData não é mais criado aqui. Ele é construído diretamente no LineChart
+  // usando os dados prontos da API: dailyAvgs e dailyLabels.
 
-  // 🎯 Geração segura dos dados para o LineChart de Comparação (Esquerda x Direita)
-  const dailyAvgsEsq = getDailySideAvgs(medicoes, "esquer");
-  const dailyAvgsDir = getDailySideAvgs(medicoes, "direit");
+  // dailyAvgsEsq e dailyAvgsDir agora vêm prontos da API:
+  // const dailyAvgsEsq = dadosProcessados.dailyAvgsEsq;
+  // const dailyAvgsDir = dadosProcessados.dailyAvgsDir;
 
   const toggleStats = () => {
     const toValue = statsExpanded ? 0 : 1;
@@ -470,8 +218,6 @@ export default function MonthlyReportScreen({ navigation, route }) {
       (mediçõesAcimaLimite / totalMedicoes) *
       100
     ).toFixed(1) : "0.0";
-
-    const isAlertLimite = mediçõesAcimaLimite > 0;
 
     return (
       <View style={styles.statsOuter}>
@@ -544,6 +290,7 @@ export default function MonthlyReportScreen({ navigation, route }) {
   };
 
   const renderMedicaoCard = (titulo, medicao, tipo) => {
+    // A data vem como string ISO da API e precisa ser convertida
     if (!medicao) return null;
     const acimaLimite = medicao.peso > pesoMaximoPermitido;
     return (
@@ -562,7 +309,7 @@ export default function MonthlyReportScreen({ navigation, route }) {
         </Text>
         <Text>
           Data:{" "}
-          {format(medicao.data, "dd/MM/yyyy HH:mm", { locale: ptBR })}
+          {format(parseISO(medicao.data), "dd/MM/yyyy HH:mm", { locale: ptBR })}
         </Text>
         <Text>Peso: {medicao.peso.toFixed(2)} kg</Text>
         {acimaLimite && (
@@ -615,11 +362,11 @@ export default function MonthlyReportScreen({ navigation, route }) {
         {loading ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#0000ff" />
-            <Text>Carregando...</Text>
+            <Text>Carregando dados e processando gráficos...</Text>
           </View>
         ) : erro ? (
           <Text style={styles.errorText}>{erro}</Text>
-        ) : medicoes.length === 0 ? (
+        ) : totalMedicoes === 0 ? (
           <Text style={styles.infoText}>Nenhuma medição encontrada.</Text>
         ) : (
           <>
@@ -627,30 +374,38 @@ export default function MonthlyReportScreen({ navigation, route }) {
 
             <Text style={styles.graphTitle}>📊 Média Diária do Mês</Text>
 
-            {/* 🎯 Garante que chartData.datasets[0].data tenha pontos antes de renderizar */}
-            {chartData.datasets[0].data.length > 0 && (
-              <LineChart
-                data={chartData}
-                width={screenWidth - 20}
-                height={220}
-                yAxisSuffix=" kg"
-                chartConfig={{
-                  backgroundColor: "#fff",
-                  backgroundGradientFrom: "#eee",
-                  backgroundGradientTo: "#eee",
-                  decimalPlaces: 1,
-                  color: (opacity = 1) => `rgba(0, 88, 136, ${opacity})`,
-                  labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-                  fillShadowGradient: "#43a047", // 🔵 cor da área sob a linha
-                  fillShadowGradientOpacity: 0.5, // transparência
-                }}
-                style={styles.graph}
-                bezier
-                fromZero
-              />
+            {/* 🎯 Gráfico da Média Diária Total */}
+            {dailyAvgs.length > 0 && (
+              <ScrollView horizontal showsHorizontalScrollIndicator={true}>
+                <LineChart
+                  data={{
+                    labels: dailyLabels, // Dados da API
+                    datasets: [
+                      { data: dailyAvgs, color: () => "#43a047" } // Dados da API
+                    ],
+                    legend: ["Média Diária do Mês"]
+                  }}
+                  width={Math.max(screenWidth, dailyAvgs.length * 40)}
+                  height={220}
+                  yAxisSuffix="kg"
+                  chartConfig={{
+                    backgroundColor: "#fff",
+                    backgroundGradientFrom: "#fff",
+                    backgroundGradientTo: "#fff",
+                    decimalPlaces: 1,
+                    color: (opacity = 1) => `rgba(67, 160, 71, ${opacity})`,
+                    labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+                    style: { borderRadius: 16 },
+                    propsForDots: { r: "5", strokeWidth: "2", stroke: "#43a047" },
+                  }}
+                  bezier
+                  style={{ marginVertical: 8, borderRadius: 16 }}
+                />
+              </ScrollView>
+
             )}
 
-            {chartData.datasets[0].data.length === 0 && (
+            {dailyAvgs.length === 0 && (
               <Text style={styles.infoText}>Gráfico da Média Diária indisponível.</Text>
             )}
 
@@ -658,40 +413,36 @@ export default function MonthlyReportScreen({ navigation, route }) {
               ⚖️ Comparativo Esquerda x Direita
             </Text>
 
-            {/* 🎯 Garante que os dados laterais tenham pontos antes de renderizar */}
+            {/* 🎯 Gráfico Comparativo Esquerda x Direita */}
             {dailyAvgsEsq.length > 0 && dailyAvgsDir.length > 0 ? (
-              <LineChart
-                data={{
-                  labels: dailyAvgs.map((d) => d.dia),
-                  datasets: [
-                    {
-                      data: dailyAvgsEsq, // Dados seguros (Esquerda)
-                      color: () => "#42be42ff",
-                      strokeWidth: 2,
-                    },
-                    {
-                      data: dailyAvgsDir, // Dados seguros (Direita)
-                      color: () => "#43a047",
-                      strokeWidth: 2,
-                    },
-                  ],
-                  legend: ["Esquerda", "Direita"],
-                }}
-                width={screenWidth - 20}
-                height={180}
-                yAxisSuffix=" kg"
-                chartConfig={{
-                  backgroundColor: "#fff",
-                  backgroundGradientFrom: "#eee",
-                  backgroundGradientTo: "#eee",
-                  decimalPlaces: 1,
-                  color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-                  labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-                  propsForDots: { r: "4", strokeWidth: "2" },
-                  propsForBackgroundLines: { strokeDasharray: "3" },
-                }}
-                style={[styles.graph, { marginBottom: 20 }]}
-              />
+              <ScrollView horizontal showsHorizontalScrollIndicator={true}>
+                <LineChart
+                  data={{
+                    labels: dailyLabels, // Dados da API
+                    datasets: [
+                      { data: dailyAvgsEsq, color: () => "#F46334" }, // Dados da API
+                      { data: dailyAvgsDir, color: () => "#36985B" }, // Dados da API
+                    ],
+                    legend: ["Esquerda", "Direita"]
+                  }}
+                  width={Math.max(screenWidth, dailyAvgs.length * 40)}
+                  height={220}
+                  yAxisSuffix="kg"
+                  chartConfig={{
+                    backgroundColor: "#fff",
+                    backgroundGradientFrom: "#fff",
+                    backgroundGradientTo: "#fff",
+                    decimalPlaces: 1,
+                    color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+                    labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+                    style: { borderRadius: 16 },
+                    propsForDots: { r: "5", strokeWidth: "2", stroke: "#333" },
+                  }}
+                  bezier
+                  style={{ marginVertical: 8, borderRadius: 16 }}
+                />
+              </ScrollView>
+
             ) : (
               <Text style={styles.infoText}>Gráfico Comparativo indisponível ou dados insuficientes.</Text>
             )}
@@ -813,20 +564,25 @@ const styles = StyleSheet.create({
   },
   statsAnimated: {
     paddingVertical: 8,
+    height: 120,
   },
   statsGrid: {
-    paddingHorizontal: 10,
+    flexDirection: "row",
     alignItems: "center",
+    paddingHorizontal: 10,
   },
   statCard: {
     backgroundColor: "#fff",
-    width: 150,
+    minWidth: 150,
+    maxWidth: 1000,
     marginRight: 10,
     borderRadius: 10,
-    padding: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     elevation: 2,
     borderLeftWidth: 6,
     borderLeftColor: "#4CAF50",
+    flexShrink: 0,
   },
   statCardTitle: {
     fontSize: 13,
@@ -838,6 +594,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#111",
     fontWeight: "700",
+    flexShrink: 1,
+    flexWrap: "nowrap",
   },
   statCardFooter: {
     fontSize: 12,

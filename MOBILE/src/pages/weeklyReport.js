@@ -1,3 +1,5 @@
+// weeklyReport.js
+
 import React, { useEffect, useState, useRef } from "react";
 import {
   View,
@@ -67,7 +69,7 @@ export default function WeeklyReportScreen({ navigation, route }) {
   const [selectedWeek, setSelectedWeek] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [medicoes, setMedicoes] = useState([]);
+  const [medicoes, setMedicoes] = useState([]); // Medições brutas (usadas apenas no modo semanal)
   const [erro, setErro] = useState("");
   const [expandedDay, setExpandedDay] = useState(null);
   const [expandedBlockKeys, setExpandedBlockKeys] = useState({});
@@ -80,6 +82,8 @@ export default function WeeklyReportScreen({ navigation, route }) {
 
   // Estatísticas do período (NOVO)
   const [estatisticas, setEstatisticas] = useState(null);
+  // 🟢 NOVO: Dados pré-agrupados no Relatório Geral (vindos da API)
+  const [relatorioGeralAgrupado, setRelatorioGeralAgrupado] = useState([]);
 
   // Controle do bloco expansível de indicadores (NOVO)
   const [statsExpanded, setStatsExpanded] = useState(true);
@@ -132,6 +136,7 @@ export default function WeeklyReportScreen({ navigation, route }) {
       setErro("");
       setMedicoes([]);
       setEstatisticas(null);
+      setRelatorioGeralAgrupado([]); // 🟢 Limpa o estado no início
 
       const resposta = await validarTokens(0, navigation);
       if (resposta !== "true") {
@@ -145,7 +150,7 @@ export default function WeeklyReportScreen({ navigation, route }) {
       let url = "";
 
       if (modoGeral) {
-        // 🔹 Modo Última Semana → usa a rota antiga
+        // 🔹 Modo Relatório Geral → usa a rota geral otimizada
         url = `${LINKAPI}${PORTAPI}/medicoes/geral/${codigo}`;
       } else {
         // 🔹 Modo Semana Selecionada → usa a nova rota /periodo/:inicio/:fim/:mochila
@@ -176,60 +181,70 @@ export default function WeeklyReportScreen({ navigation, route }) {
       }
 
       const dados = await response.json();
-      setMedicoes(dados || []);
 
-      // --- NOVO: calcular indicadores estatísticos a partir das medições retornadas
-      // Vamos agrupar por minuto (hh:mm) e calcular a média esquerda + direita por minuto — igual abordagem do relatório diário
-      const minuteMap = {};
-      (dados || []).forEach((m) => {
-        try {
-          const dt = new Date(m.MedicaoData);
-          const hh = String(dt.getHours()).padStart(2, "0");
-          const mm = String(dt.getMinutes()).padStart(2, "0");
-          const key = `${hh}:${mm}`;
-          if (!minuteMap[key]) minuteMap[key] = { left: [], right: [], raw: [] };
+      if (modoGeral) {
+        // 🟢 NOVO: Consome os dados pré-processados da API para o Relatório Geral
+        setMedicoes([]); // Não precisamos dos dados brutos
+        setEstatisticas(dados.estatisticas || null);
+        setRelatorioGeralAgrupado(dados.agrupadoPorDia || []); // Contém os dados para o gráfico
+      } else {
+        // 🔹 Modo Semana Selecionada: Mantém o processamento local (necessário para detalhes)
+        setMedicoes(dados || []);
+        setRelatorioGeralAgrupado([]); // Não usamos o agrupamento geral neste modo
 
-          const local = (m.MedicaoLocal || "").toString().toLowerCase();
-          if (local.includes("esquer")) minuteMap[key].left.push(Number(m.MedicaoPeso || 0));
-          else if (local.includes("direit")) minuteMap[key].right.push(Number(m.MedicaoPeso || 0));
-          else if (local.includes("amb") || local.includes("cent")) {
-            minuteMap[key].left.push(Number(m.MedicaoPeso || 0));
-            minuteMap[key].right.push(Number(m.MedicaoPeso || 0));
-          } else minuteMap[key].raw.push(Number(m.MedicaoPeso || 0));
-        } catch (e) {
-          // ignore malformed dates
+        // --- Cálculo local de indicadores estatísticos para o período selecionado ---
+        const minuteMap = {};
+        (dados || []).forEach((m) => {
+          try {
+            const dt = new Date(m.MedicaoData);
+            const hh = String(dt.getHours()).padStart(2, "0");
+            const mm = String(dt.getMinutes()).padStart(2, "0");
+            const key = `${hh}:${mm}`;
+            if (!minuteMap[key]) minuteMap[key] = { left: [], right: [], raw: [] };
+
+            const local = (m.MedicaoLocal || "").toString().toLowerCase();
+            if (local.includes("esquer")) minuteMap[key].left.push(Number(m.MedicaoPeso || 0));
+            else if (local.includes("direit")) minuteMap[key].right.push(Number(m.MedicaoPeso || 0));
+            else if (local.includes("amb") || local.includes("cent")) {
+              minuteMap[key].left.push(Number(m.MedicaoPeso || 0));
+              minuteMap[key].right.push(Number(m.MedicaoPeso || 0));
+            } else minuteMap[key].raw.push(Number(m.MedicaoPeso || 0));
+          } catch (e) {
+            // ignore malformed dates
+          }
+        });
+
+        const totals = Object.keys(minuteMap).map((k) => {
+          const obj = minuteMap[k];
+          const avgLeft = obj.left.length ? obj.left.reduce((a, b) => a + b, 0) / obj.left.length : 0;
+          const avgRight = obj.right.length ? obj.right.reduce((a, b) => a + b, 0) / obj.right.length : 0;
+          return roundTo2((avgLeft || 0) + (avgRight || 0));
+        });
+
+        const stats = calcularEstatisticas(totals);
+
+        // --- Cálculo da regressão linear ---
+        const x = []; // eixo X → índices (1, 2, 3, 4, ...)
+        const y = []; // eixo Y → médias válidas
+
+        totals.forEach((valor, i) => {
+          if (valor > 0 && Number.isFinite(valor)) {
+            x.push(i + 1);
+            y.push(valor);
+          }
+        });
+
+        let regressao = null;
+        if (x.length >= 2) {
+          regressao = calcularRegressaoLinear(x, y);
         }
-      });
 
-      const totals = Object.keys(minuteMap).map((k) => {
-        const obj = minuteMap[k];
-        const avgLeft = obj.left.length ? obj.left.reduce((a, b) => a + b, 0) / obj.left.length : 0;
-        const avgRight = obj.right.length ? obj.right.reduce((a, b) => a + b, 0) / obj.right.length : 0;
-        return roundTo2((avgLeft || 0) + (avgRight || 0));
-      });
-
-      const stats = calcularEstatisticas(totals);
-
-      // --- Cálculo da regressão linear ---
-      const x = []; // eixo X → índices (1, 2, 3, 4, ...)
-      const y = []; // eixo Y → médias válidas
-
-      totals.forEach((valor, i) => {
-        if (valor > 0 && Number.isFinite(valor)) {
-          x.push(i + 1);
-          y.push(valor);
-        }
-      });
-
-      let regressao = null;
-      if (x.length >= 2) {
-        regressao = calcularRegressaoLinear(x, y);
+        setEstatisticas({
+          ...stats,
+          regressao,
+        });
       }
 
-      setEstatisticas({
-        ...stats,
-        regressao,
-      });
 
     } catch (e) {
       console.error(e);
@@ -315,6 +330,7 @@ export default function WeeklyReportScreen({ navigation, route }) {
     });
   };
 
+  // Função buildDayDetails (mantida, mas só será usada no modo Semana Selecionada)
   const buildDayDetails = (items) => {
     const minuteMap = {};
     items.forEach((m) => {
@@ -402,25 +418,34 @@ export default function WeeklyReportScreen({ navigation, route }) {
     };
   };
 
+  // 🟢 NOVO: Usa os dados pré-processados da API quando em modoGeral
+  // 🟢 CORREÇÃO: Função para construir os grupos da UI
   const buildGroupsForUI = () => {
     if (modoGeral) {
-      const map = {};
-      medicoes.forEach((m) => {
-        const dt = new Date(m.MedicaoData);
-        const weekday = format(dt, "EEEE", { locale: ptBR });
-        const label = weekday;
-        if (!map[label]) map[label] = [];
-        map[label].push(m);
+      if (!relatorioGeralAgrupado.length) return [];
+
+      // 🔹 Agrupa por key para evitar duplicatas (problema identificado nos logs)
+      const groupedByKey = {};
+      relatorioGeralAgrupado.forEach(g => {
+        if (!groupedByKey[g.key]) {
+          groupedByKey[g.key] = g;
+        }
       });
-      const weekOrder = ["segunda-feira", "terça-feira", "quarta-feira", "quinta-feira", "sexta-feira", "sábado", "domingo"];
-      const ordered = weekOrder.filter(k => map[k]).concat(Object.keys(map).filter(k => !weekOrder.includes(k)));
-      const result = ordered.map(k => {
-        const items = map[k].sort((a, b) => new Date(a.MedicaoData) - new Date(b.MedicaoData));
-        const details = buildDayDetails(items);
-        return { key: k, label: k, items, details };
-      });
-      return result;
+
+      // 🔹 Ordena os dias da semana corretamente
+      const diasOrdenados = ['segunda-feira', 'terça-feira', 'quarta-feira', 'quinta-feira', 'sexta-feira', 'sábado', 'domingo'];
+      return diasOrdenados
+        .filter(dia => groupedByKey[dia])
+        .map(dia => ({
+          key: groupedByKey[dia].key,
+          label: groupedByKey[dia].label,
+          mediaPeso: groupedByKey[dia].mediaPeso,
+          details: {
+            dayAvgTotal: groupedByKey[dia].mediaPeso || 0
+          }
+        }));
     } else {
+      // 🔹 Modo Semana Selecionada: Mantém o processamento local
       const filtered = medicoes.filter((m) =>
         isWithinInterval(parseISO(m.MedicaoData), {
           start: startOfWeek(selectedWeek, { locale: ptBR }),
@@ -437,22 +462,39 @@ export default function WeeklyReportScreen({ navigation, route }) {
 
   const groupsForUI = buildGroupsForUI();
 
+  // 🟢 CORREÇÃO: Geração dos labels do gráfico
   const chartLabels = groupsForUI.map(g => {
     if (modoGeral) {
-      return g.label.split(" ")[0].slice(0, 3);
+      // No modo geral, pega as 3 primeiras letras do dia da semana
+      return g.label.split("-")[0].slice(0, 3); // "segunda-feira" -> "seg"
     } else {
+      // No modo semanal, mantém a lógica original
       return g.label.split(",")[0].slice(0, 3);
     }
   });
 
+  // 🟢 CORREÇÃO: Geração dos valores do gráfico
   const chartValues = groupsForUI.map(g => {
-    const val = g.details?.dayAvgTotal ?? 0;
-    return Number.isFinite(val) ? val : 0;
+    if (modoGeral) {
+      // No modo geral, usa mediaPeso diretamente
+      return g.mediaPeso || 0;
+    } else {
+      // No modo semanal, usa dayAvgTotal
+      return g.details?.dayAvgTotal || 0;
+    }
   });
 
+  // 🟢 CORREÇÃO: Construção dos dados do gráfico
   const chartData = {
     labels: chartLabels,
-    datasets: [{ data: chartValues, color: () => "#43a047", strokeWidth: 2 }],
+    datasets: [
+      {
+        data: chartValues,
+        color: () => "#43a047",
+        strokeWidth: 2,
+      },
+    ],
+    legend: [modoGeral ? "Média Geral por Dia" : "Média Total Diária"],
   };
 
   const toggleBlock = (dayKey, blockStart) => {
@@ -518,11 +560,11 @@ export default function WeeklyReportScreen({ navigation, route }) {
           <View style={styles.loadingContainer}><ActivityIndicator size="large" color="#0000ff" /><Text>Carregando...</Text></View>
         ) : erro ? (
           <Text style={styles.errorText}>{erro}</Text>
-        ) : medicoes.length === 0 ? (
+        ) : (!modoGeral && medicoes.length === 0) || (modoGeral && relatorioGeralAgrupado.length === 0) ? (
           <Text style={styles.infoText}>Nenhuma medição encontrada.</Text>
         ) : (
           <>
-            {/* --- BLOCO DE INDICADORES (ADICIONADO) --- */}
+            {/* --- BLOCO DE INDICADORES --- */}
             <View style={styles.statsOuter}>
               <TouchableOpacity style={styles.statsHeader} onPress={toggleStats} activeOpacity={0.8}>
                 <Text style={styles.statsHeaderText}>📈 Indicadores Estatísticos</Text>
@@ -572,7 +614,7 @@ export default function WeeklyReportScreen({ navigation, route }) {
                   </View>
 
                   <View style={[styles.statCard, { borderLeftColor: "#607D8B" }]}>
-                    <Text style={styles.statCardTitle}>Regressão Linea</Text>
+                    <Text style={styles.statCardTitle}>Regressão Linear</Text>
                     <Text style={styles.statCardValue}>{estatisticas?.regressao
                       ? `y = ${estatisticas.regressao.a}x + ${estatisticas.regressao.b}`
                       : "-"}</Text>
@@ -586,7 +628,7 @@ export default function WeeklyReportScreen({ navigation, route }) {
 
             {hasValidChart ? (
               <LineChart
-                data={chartData}
+                data={chartData} // <-- Usa a variável chartData definida condicionalmente
                 width={screenWidth - 20}
                 height={220}
                 yAxisSuffix=" kg"
@@ -597,8 +639,8 @@ export default function WeeklyReportScreen({ navigation, route }) {
                   decimalPlaces: 1,
                   color: (opacity = 1) => `rgba(0, 88, 136, ${opacity})`,
                   labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-                  fillShadowGradient: "#43a047", // 🔵 cor da área sob a linha
-                  fillShadowGradientOpacity: 0.5, // transparência
+                  fillShadowGradient: "#43a047",
+                  fillShadowGradientOpacity: 0.5,
                 }}
                 style={styles.graph}
                 bezier
@@ -616,11 +658,13 @@ export default function WeeklyReportScreen({ navigation, route }) {
               <Text style={styles.infoText}>Nenhum dado disponível para este filtro.</Text>
             )}
 
-            {hasValidChart && (
+            {/* --- GRÁFICO 2: Comparativo Esquerda x Direita --- */}
+            {/* 🎯 SÓ RENDERIZA QUANDO NÃO ESTIVER NO MODO GERAL */}
+            {hasValidChart && !modoGeral && (
               <>
                 <Text style={[styles.graphTitle, { marginTop: 25 }]}>
                   ⚖️ Comparativo Esquerda x Direita{"\n"}
-                  ({modoGeral ? "Relatório Geral" : "Semana Selecionada"})
+                  (Semana Selecionada) {/* Removido o texto "Relatório Geral" aqui */}
                 </Text>
 
                 <LineChart
@@ -630,6 +674,7 @@ export default function WeeklyReportScreen({ navigation, route }) {
                       {
                         data: groupsForUI.map((g) => {
                           const details = g.details;
+                          // Esta lógica continua dependendo de 'details.minuteEntries' e só funciona no modo detalhado.
                           if (!details || !details.minuteEntries?.length) return 0;
 
                           // média das medições do lado esquerdo
@@ -682,6 +727,7 @@ export default function WeeklyReportScreen({ navigation, route }) {
               </>
             )}
 
+            {/* 🛑 AQUI SÓ SERÁ RENDERIZADO NO MODO SEMANA SELECIONADA, CONFORME REQUISITADO */}
             {!modoGeral && groupsForUI.map((g) => (
               <View key={g.key} style={styles.blockContainer}>
                 <TouchableOpacity style={[styles.blockHeader, expandedDay === g.key && styles.blockHeaderExpanded]} onPress={() => setExpandedDay(expandedDay === g.key ? null : g.key)}>
@@ -727,12 +773,8 @@ export default function WeeklyReportScreen({ navigation, route }) {
                                       <View style={{ paddingLeft: 10, paddingTop: 6 }}>
                                         {hourEntries.map((minuteEntry, mi) => {
 
-                                          // 🛑 NOVO: Lógica de verificação de alerta com base no peso máximo permitido
-                                          // 1. Calcula o peso total no minuto (soma das médias da esquerda e direita)
+                                          // 🛑 Lógica de verificação de alerta com base no peso máximo permitido
                                           const pesoTotalDoMinuto = minuteEntry.avgLeft + minuteEntry.avgRight;
-
-                                          // 2. Compara o peso total com o peso máximo permitido
-                                          // A variável 'pesoMaximoPermitido' deve estar disponível neste escopo.
                                           const isAlert = pesoTotalDoMinuto > pesoMaximoPermitido;
 
                                           return (
@@ -741,15 +783,13 @@ export default function WeeklyReportScreen({ navigation, route }) {
                                               <View style={styles.cardHeader}>
                                                 <Text style={styles.cardTime}>{minuteEntry.minute}</Text>
 
-                                                {/* NOVO: Lógica de equilíbrio inspirada no Relatório Diário */}
+                                                {/* Lógica de equilíbrio inspirada no Relatório Diário */}
                                                 {(() => {
-                                                  // As variáveis do relatório semanal são avgLeft e avgRight
                                                   const pesoEsq = minuteEntry.avgLeft;
                                                   const pesoDir = minuteEntry.avgRight;
 
                                                   const diferenca = Math.abs(pesoEsq - pesoDir);
                                                   const maiorPeso = Math.max(pesoEsq, pesoDir);
-                                                  // Previne divisão por zero
                                                   const percentual = maiorPeso > 0 ? (diferenca / maiorPeso) * 100 : 0;
 
                                                   let posicao = "center";
@@ -784,7 +824,6 @@ export default function WeeklyReportScreen({ navigation, route }) {
                                                 <Text style={styles.cardText}><Text style={styles.bold}>Direita:</Text> {minuteEntry.avgRight.toFixed(2)} kg</Text>
                                               </View>
 
-                                              {/* Nota: 'minuteEntry.total' parece ser o mesmo que 'pesoTotalDoMinuto' */}
                                               <Text style={[styles.cardText, { marginTop: 6 }]}><Text style={styles.bold}>Total:</Text> {minuteEntry.total.toFixed(2)} kg</Text>
 
                                               {isAlert && (
@@ -1015,13 +1054,16 @@ const styles = StyleSheet.create({
   },
   statCard: {
     backgroundColor: "#fff",
-    width: 150,
+    minWidth: 150,           // 🔹 largura mínima, mas permite crescer
+    maxWidth: 1000,           // 🔹 limite opcional (pode ajustar)
     marginRight: 10,
     borderRadius: 10,
-    padding: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     elevation: 2,
     borderLeftWidth: 6,
     borderLeftColor: "#4CAF50",
+    flexShrink: 0,           // 🔹 impede que o card reduza tamanho
   },
   statCardTitle: {
     fontSize: 13,

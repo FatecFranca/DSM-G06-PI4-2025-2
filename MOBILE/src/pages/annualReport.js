@@ -1,4 +1,4 @@
-// AnnualReportScreen.js
+// annualReport.js
 import React, { useState, useEffect, useRef } from "react";
 import {
   View,
@@ -15,7 +15,6 @@ import { LineChart } from "react-native-chart-kit";
 import { Dimensions } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Picker } from "@react-native-picker/picker";
-import { format } from "date-fns";
 
 import { LINKAPI, PORTAPI } from "../utils/global";
 import {
@@ -30,7 +29,7 @@ import SettingsModal from "../components/SettingsModal";
 
 const screenWidth = Dimensions.get("window").width;
 
-// --- FUNÇÕES AUXILIARES ---
+// --- FUNÇÕES AUXILIARES (mantive roundTo2 importado, caso precise) ---
 const localSide = (local) => {
   if (!local) return "outro";
   const l = local.toString().toLowerCase();
@@ -38,72 +37,6 @@ const localSide = (local) => {
   if (l.includes("direit")) return "direita";
   if (l.includes("amb")) return "ambos";
   return "outro";
-};
-
-const calcularEstatisticas = (valoresRaw) => {
-  const valores = valoresRaw.filter((v) => typeof v === "number" && Number.isFinite(v));
-  if (!valores.length) return null;
-
-  const n = valores.length;
-  const somatorio = valores.reduce((a, b) => a + b, 0);
-  const media = somatorio / n;
-
-  const sorted = [...valores].sort((a, b) => a - b);
-  const mediana =
-    n % 2 === 0
-      ? (sorted[n / 2 - 1] + sorted[n / 2]) / 2
-      : sorted[Math.floor(n / 2)];
-
-  const freq = {};
-  valores.forEach((v) => {
-    const key = roundTo2(v).toString();
-    freq[key] = (freq[key] || 0) + 1;
-  });
-  const maxFreq = Math.max(...Object.values(freq));
-  const modaArray = Object.keys(freq)
-    .filter((k) => freq[k] === maxFreq)
-    .map((k) => Number(k));
-
-  const variancia =
-    valores.reduce((a, b) => a + Math.pow(b - media, 2), 0) / n;
-  const desvioPadrao = Math.sqrt(variancia);
-
-  const denomSkew = desvioPadrao === 0 ? 1 : Math.pow(desvioPadrao, 3);
-  const denomKurt = desvioPadrao === 0 ? 1 : Math.pow(desvioPadrao, 4);
-
-  const assimetria =
-    valores.reduce((a, b) => a + Math.pow(b - media, 3), 0) / n / denomSkew;
-  const curtose =
-    valores.reduce((a, b) => a + Math.pow(b - media, 4), 0) / n / denomKurt - 3;
-
-  return {
-    media: roundTo2(media),
-    mediana: roundTo2(mediana),
-    moda: modaArray.length ? modaArray.join(", ") : "—",
-    desvioPadrao: roundTo2(desvioPadrao),
-    assimetria: roundTo2(assimetria),
-    curtose: roundTo2(curtose),
-  };
-};
-
-// --- FUNÇÃO DE REGRESSÃO LINEAR ---
-const calcularRegressaoLinear = (valores) => {
-  // valores: array de números (ex.: totais por mês)
-  const n = valores.length;
-  if (n < 2) return null;
-  const x = Array.from({ length: n }, (_, i) => i + 1); // 1..n
-  const y = valores;
-
-  const mediaX = x.reduce((a, b) => a + b, 0) / n;
-  const mediaY = y.reduce((a, b) => a + b, 0) / n;
-
-  const numerador = x.reduce((acc, xi, i) => acc + (xi - mediaX) * (y[i] - mediaY), 0);
-  const denominador = x.reduce((acc, xi) => acc + Math.pow(xi - mediaX, 2), 0);
-
-  const a = denominador === 0 ? 0 : numerador / denominador;
-  const b = mediaY - a * mediaX;
-
-  return { a: roundTo2(a), b: roundTo2(b) };
 };
 
 // --- COMPONENTE PRINCIPAL ---
@@ -114,7 +47,7 @@ export default function AnnualReportScreen({ navigation, route }) {
   const [darkTheme, setDarkTheme] = useState(false);
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState("");
-  const [medicoes, setMedicoes] = useState([]);
+  const [medicoes, setMedicoes] = useState([]); // opcional, mantido para compatibilidade
   const [anoSelecionado, setAnoSelecionado] = useState(new Date().getFullYear());
 
   const [pesoUsuario, setPesoUsuario] = useState(0);
@@ -125,6 +58,8 @@ export default function AnnualReportScreen({ navigation, route }) {
 
   const [statsExpanded, setStatsExpanded] = useState(true);
   const animVal = useRef(new Animated.Value(1)).current;
+
+  const [processando, setProcessando] = useState(false);
 
   const meses = [
     "Jan", "Fev", "Mar", "Abr", "Mai", "Jun",
@@ -139,12 +74,10 @@ export default function AnnualReportScreen({ navigation, route }) {
     if (pesoUsuario > 0) {
       buscarRelatorioAnual();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [anoSelecionado, pesoUsuario]);
 
-  useEffect(() => {
-    processarMedicoesAnual(medicoes);
-  }, [medicoes]);
-
+  // Buscar info do usuário (peso, %)
   const buscarDadosUsuario = async () => {
     try {
       const response = await obterDadosUsuario(navigation);
@@ -158,12 +91,15 @@ export default function AnnualReportScreen({ navigation, route }) {
     }
   };
 
+  // Buscar relatório no backend (API já calcula médias e estatísticas)
   const buscarRelatorioAnual = async () => {
     try {
       setLoading(true);
+      setProcessando(true);
       setErro("");
       setMedicoes([]);
-      setEstatisticas(null); // Resetar as estatísticas
+      setEstatisticas(null);
+      setMediasMensais(Array(12).fill(0));
 
       const tokenValido = await validarTokens(0, navigation);
       if (tokenValido !== "true") {
@@ -184,96 +120,45 @@ export default function AnnualReportScreen({ navigation, route }) {
         }
       );
 
+      // receber corpo mesmo em 200
+      const dados = await response.json();
+
       if (!response.ok) {
-        const erroData = await response.json();
-        setErro(erroData.error || "Erro ao obter relatório anual");
+        // Caso a API retorne status de erro
+        const msg = dados.error || dados.mensagem || "Erro ao obter relatório anual";
+        setErro(msg);
+        setProcessando(false);
         return;
       }
 
-      const dados = await response.json();
-      setMedicoes(dados);
+      // A API pode retornar mediasMensais e estatisticas ou mensagem de "sem medições"
+      let medias = Array.isArray(dados.mediasMensais) ? dados.mediasMensais : Array(12).fill(0);
+      // Garantir array de 12 elementos e valores numéricos
+      medias = Array.from({ length: 12 }, (_, i) => {
+        const v = medias[i];
+        const n = typeof v === "number" && Number.isFinite(v) ? v : Number(parseFloat(v));
+        return Number.isFinite(n) ? roundTo2(n) : 0;
+      });
+
+      setMediasMensais(medias);
+
+      // Estatísticas podem ser nulas
+      setEstatisticas(dados.estatisticas || null);
+
+      // Manter campo medicoes para compatibilidade antiga (vazio pois API não retorna tudo)
+      // Se a API retornar medicoes completas, você pode setar aqui: setMedicoes(dados.medicoes || []);
+      setMedicoes([]); // reduz memória no mobile
+
     } catch (e) {
       console.error(e);
       setErro("Erro ao conectar no servidor.");
     } finally {
       setLoading(false);
+      setProcessando(false);
     }
   };
 
-  // Agrupa medições por mês
-  const agruparPorMes = (dados) => {
-    const grupos = {};
-    dados.forEach((item) => {
-      // 0 a 11
-      const mes = new Date(item.MedicaoData).getMonth();
-      if (!grupos[mes]) grupos[mes] = [];
-      grupos[mes].push(item);
-    });
-    return grupos;
-  };
-
-  // Processa medições para gerar médias mensais e estatísticas
-  const processarMedicoesAnual = (dados) => {
-    if (!dados || dados.length === 0) {
-      setEstatisticas(null);
-      setMediasMensais(Array(12).fill(0));
-      return;
-    }
-
-    const grupos = agruparPorMes(dados);
-    const totaisAnuais = [];
-
-    const novasMediasMensais = meses.map((_, i) => {
-      const med = grupos[i];
-      if (!med || med.length === 0) return 0;
-
-      // Filtra as medições por lado
-      const esquerda = med.filter((m) =>
-        localSide(m.MedicaoLocal) === "esquerda" || localSide(m.MedicaoLocal) === "ambos"
-      );
-      const direita = med.filter((m) =>
-        localSide(m.MedicaoLocal) === "direita" || localSide(m.MedicaoLocal) === "ambos"
-      );
-
-      // Média dos pesos medidos para cada lado no mês
-      const mediaEsq =
-        esquerda.reduce((a, b) => a + Number(b.MedicaoPeso || 0), 0) /
-        (esquerda.length || 1);
-      const mediaDir =
-        direita.reduce((a, b) => a + Number(b.MedicaoPeso || 0), 0) /
-        (direita.length || 1);
-
-      const totalMensal = mediaEsq + mediaDir;
-
-      // Garante que o valor é finito antes de adicionar para as estatísticas
-      if (Number.isFinite(totalMensal)) {
-        totaisAnuais.push(roundTo2(totalMensal));
-      }
-
-      // Filtro final de segurança para o gráfico
-      if (!Number.isFinite(totalMensal)) return 0;
-
-      return roundTo2(totalMensal);
-    });
-
-    setMediasMensais(novasMediasMensais);
-
-    // Calcular as estatísticas usando os totais mensais
-    const stats = calcularEstatisticas(totaisAnuais);
-    setEstatisticas(stats);
-
-    // 🔹 Adiciona regressão linear na estrutura de estatísticas
-    if (totaisAnuais.length >= 2) {
-      const regressao = calcularRegressaoLinear(totaisAnuais);
-      setEstatisticas((prev) => ({
-        ...prev,
-        regressao: `y = ${regressao.a}x + ${regressao.b}`,
-      }));
-    }
-  };
-
-  // UI Helpers
-
+  // UI Helpers - animação dos cards
   const toggleStats = () => {
     const toValue = statsExpanded ? 0 : 1;
     Animated.timing(animVal, {
@@ -287,13 +172,13 @@ export default function AnnualReportScreen({ navigation, route }) {
 
   const animatedHeight = animVal.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, 140], // Altura ajustada para o ScrollView anual
+    outputRange: [0, 140],
   });
   const animatedOpacity = animVal;
 
   const renderStatCard = (titulo, valor, cor, emoji) => {
     return (
-      <View style={[styles.statCard, { borderLeftColor: cor }]}>
+      <View style={[styles.statCard, { borderLeftColor: cor }]} key={titulo}>
         <Text style={styles.statCardTitle}>
           {emoji} {titulo}
         </Text>
@@ -303,10 +188,11 @@ export default function AnnualReportScreen({ navigation, route }) {
   };
 
   const renderIndicadoresAnuais = () => {
-    // Apenas renderiza se houver medições E estatísticas calculadas
-    if (medicoes.length === 0 || !estatisticas) return null;
+    // Exibe somente se há estatísticas ou pelo menos uma média mensal > 0
+    const temDados = mediasMensais.some(v => Number.isFinite(v) && v > 0);
+    if (!temDados && !estatisticas) return null;
 
-    const estatisticasCalculadas = estatisticas;
+    const stats = estatisticas || {};
 
     return (
       <View style={styles.statsOuter}>
@@ -317,46 +203,21 @@ export default function AnnualReportScreen({ navigation, route }) {
 
         <Animated.View style={[styles.statsAnimated, { height: animatedHeight, opacity: animatedOpacity }]}>
           <ScrollView horizontal contentContainerStyle={styles.statsGrid} showsHorizontalScrollIndicator={false}>
-            {renderStatCard(
-              "Média Anual",
-              `${estatisticasCalculadas?.media ?? "—"} kg`,
-              "#00BCD4"
-            )}
-            {renderStatCard(
-              "Mediana",
-              `${estatisticasCalculadas?.mediana ?? "—"} kg`,
-              "#2196F3"
-            )}
-            {renderStatCard(
-              "Moda",
-              `${estatisticasCalculadas?.moda ?? "—"} kg`,
-              "#9C27B0"
-            )}
-            {renderStatCard(
-              "Desvio Padrão",
-              `${estatisticasCalculadas?.desvioPadrao ?? "—"} kg`,
-              "#FF9800"
-            )}
-            {renderStatCard(
-              "Assimetria",
-              `${estatisticasCalculadas?.assimetria ?? "—"}`,
-              "#F44336"
-            )}
-            {renderStatCard(
-              "Curtose",
-              `${estatisticasCalculadas?.curtose ?? "—"}`,
-              "#607D8B"
-            )}
-            {renderStatCard(
-              "Regressão Linear",
-              `${estatisticasCalculadas?.regressao ?? "—"}`,
-              "#8BC34A"
-            )}
+            {renderStatCard("Média", `${stats?.media ?? "—"} kg`, "#00BCD4", "")}
+            {renderStatCard("Mediana", `${stats?.mediana ?? "—"} kg`, "#2196F3", "")}
+            {renderStatCard("Moda", `${stats?.moda ?? "—"} kg`, "#9C27B0", "")}
+            {renderStatCard("Desvio Padrão", `${stats?.desvioPadrao ?? "—"} kg`, "#FF9800", "")}
+            {renderStatCard("Assimetria", `${stats?.assimetria ?? "—"}`, "#F44336", "")}
+            {renderStatCard("Curtose", `${stats?.curtose ?? "—"}`, "#607D8B", "")}
+            {renderStatCard("Regressão Linear", `${stats?.regrLinear ?? "—"}`, "#8BC34A", "")}
           </ScrollView>
         </Animated.View>
       </View>
     );
   };
+
+  // Determina se temos dados suficientes para gráfico
+  const possuiDadosGrafico = mediasMensais.some(v => Number.isFinite(v) && v > 0);
 
   return (
     <View style={styles.container}>
@@ -394,14 +255,14 @@ export default function AnnualReportScreen({ navigation, route }) {
           <Text style={styles.fetchButtonText}>Buscar Relatório</Text>
         </TouchableOpacity>
 
-        {loading ? (
+        {loading || processando ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#0000ff" />
             <Text>Carregando...</Text>
           </View>
         ) : erro ? (
           <Text style={styles.errorText}>{erro}</Text>
-        ) : medicoes.length === 0 ? (
+        ) : !possuiDadosGrafico && !estatisticas ? (
           <Text style={styles.infoText}>Nenhuma medição encontrada. Selecione outro ano e toque em "Buscar Relatório".</Text>
         ) : (
           <>
@@ -409,7 +270,7 @@ export default function AnnualReportScreen({ navigation, route }) {
 
             {/* Gráfico principal */}
             <Text style={styles.graphTitle}>📊 Média de Peso por Mês</Text>
-            {mediasMensais.filter(v => v > 0).length > 0 ? (
+            {possuiDadosGrafico ? (
               <LineChart
                 data={{
                   labels: meses,
@@ -427,8 +288,8 @@ export default function AnnualReportScreen({ navigation, route }) {
                   decimalPlaces: 1,
                   color: (opacity = 1) => `rgba(0, 88, 136, ${opacity})`,
                   labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-                  fillShadowGradient: "#43a047", // 🔵 cor da área sob a linha
-                  fillShadowGradientOpacity: 0.5, // transparência
+                  fillShadowGradient: "#43a047",
+                  fillShadowGradientOpacity: 0.5,
                 }}
                 style={styles.graph}
                 bezier
@@ -437,6 +298,36 @@ export default function AnnualReportScreen({ navigation, route }) {
             ) : (
               <Text style={styles.infoText}>Dados insuficientes para gerar o gráfico.</Text>
             )}
+
+            {/* Detalhamento Mensal */}
+            <View style={styles.monthlyDetailsOuter}>
+              <Text style={styles.monthlyDetailsTitle}>📅 Detalhamento Mensal (Média)</Text>
+
+              {mediasMensais.every((v) => v === 0) ? (
+                <Text style={styles.infoText}>Nenhum dado disponível para exibir detalhamento.</Text>
+              ) : (
+                meses.map((mes, i) => {
+                  let valor = mediasMensais[i];
+                  if (!Number.isFinite(valor)) valor = 0; // garante número válido
+
+                  return (
+                    <View key={i} style={styles.monthBlock}>
+                      <View style={styles.monthBlockHeader}>
+                        <Text style={styles.monthName}>{mes}</Text>
+                        <Text
+                          style={[
+                            styles.monthAvg,
+                            { color: valor > 0 ? "#00796b" : "#9e9e9e" },
+                          ]}
+                        >
+                          {valor.toFixed(2)} kg
+                        </Text>
+                      </View>
+                    </View>
+                  );
+                })
+              )}
+            </View>
           </>
         )}
       </ScrollView>
@@ -461,7 +352,7 @@ export default function AnnualReportScreen({ navigation, route }) {
   );
 }
 
-// --- ESTILOS (completos) ---
+// --- ESTILOS (reaproveitados do original) ---
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#eee" },
   title: {
@@ -546,20 +437,25 @@ const styles = StyleSheet.create({
   },
   statsAnimated: {
     paddingVertical: 8,
+    height: 120,
   },
   statsGrid: {
-    paddingHorizontal: 10,
+    flexDirection: "row",
     alignItems: "center",
+    paddingHorizontal: 10,
   },
   statCard: {
     backgroundColor: "#fff",
-    width: 150,
+    minWidth: 150,
+    maxWidth: 1000,
     marginRight: 10,
     borderRadius: 10,
-    padding: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     elevation: 2,
     borderLeftWidth: 6,
     borderLeftColor: "#4CAF50",
+    flexShrink: 0,
   },
   statCardTitle: {
     fontSize: 13,
@@ -608,6 +504,46 @@ const styles = StyleSheet.create({
 
   // extras
   loadingText: { textAlign: "center", marginTop: 8 },
-  // fallback para o gráfico
   emptyChart: { textAlign: "center", color: "#777", marginTop: 8 },
+
+  // --- Detalhamento Mensal ---
+  monthlyDetailsOuter: {
+    backgroundColor: "#fff",
+    marginHorizontal: 10,
+    marginTop: 15,
+    marginBottom: 25,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#d0d7d7",
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    elevation: 2,
+  },
+  monthlyDetailsTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#2e7d32",
+    marginBottom: 10,
+  },
+  monthBlock: {
+    borderBottomWidth: 1,
+    borderColor: "#e0e0e0",
+    paddingVertical: 8,
+  },
+  monthBlockHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  monthName: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#333",
+  },
+  monthAvg: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#00796b",
+  },
+
 });

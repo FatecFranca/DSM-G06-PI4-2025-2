@@ -1,3 +1,5 @@
+// dailyReport.js
+
 import React, { useState, useEffect, useRef } from "react";
 import {
   View,
@@ -643,11 +645,43 @@ export default function DailyReportScreen({ navigation, route }) {
                               setExpandedSubHour(expandedSubHour === subHora ? null : subHora)
                             }
                           >
-                            <Text style={styles.subBlockTitle}>{subHora}:00</Text>
+                            <View style={{ flexDirection: "row", alignItems: "center" }}>
+                              <Text style={styles.subBlockTitle}>{subHora}:00</Text>
+
+                              {/* Cálculo da média da hora */}
+                              {(() => {
+                                const mediaHora = (() => {
+                                  const esquerda = lista.filter((v) =>
+                                    v.MedicaoLocal?.toLowerCase().includes("esquerda")
+                                  );
+                                  const direita = lista.filter((v) =>
+                                    v.MedicaoLocal?.toLowerCase().includes("direita")
+                                  );
+
+                                  const pesoEsq =
+                                    esquerda.reduce((acc, v) => acc + Number(v.MedicaoPeso || 0), 0) /
+                                    (esquerda.length || 1);
+                                  const pesoDir =
+                                    direita.reduce((acc, v) => acc + Number(v.MedicaoPeso || 0), 0) /
+                                    (direita.length || 1);
+
+                                  const total = pesoEsq + pesoDir;
+                                  return total.toFixed(2);
+                                })();
+
+                                return (
+                                  <Text style={{ fontSize: 14, color: "#33691e", marginLeft: 10 }}>
+                                    (média: {mediaHora} kg)
+                                  </Text>
+                                );
+                              })()}
+                            </View>
+
                             <Text style={styles.blockToggle}>
                               {expandedSubHour === subHora ? "▼" : "▶"}
                             </Text>
                           </TouchableOpacity>
+
 
                           {expandedSubHour === subHora &&
                             mediasHoraOrdenadas.map((dado, idx) => {
@@ -922,22 +956,26 @@ const styles = StyleSheet.create({
     color: "#2e7d32",
   },
   statsAnimated: {
-    // height controlado pela animação
     paddingVertical: 8,
+    height: 120,
   },
   statsGrid: {
-    paddingHorizontal: 10,
+    flexDirection: "row",   // 🔹 Garante alinhamento horizontal
     alignItems: "center",
+    paddingHorizontal: 10,
   },
   statCard: {
     backgroundColor: "#fff",
-    width: 150,
+    minWidth: 150,           // 🔹 largura mínima, mas permite crescer
+    maxWidth: 1000,           // 🔹 limite opcional (pode ajustar)
     marginRight: 10,
     borderRadius: 10,
-    padding: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     elevation: 2,
     borderLeftWidth: 6,
     borderLeftColor: "#4CAF50",
+    flexShrink: 0,           // 🔹 impede que o card reduza tamanho
   },
   statCardTitle: {
     fontSize: 13,

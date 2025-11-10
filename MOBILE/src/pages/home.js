@@ -1,3 +1,5 @@
+// home.js
+
 import React, { use, useEffect, useState } from "react";
 import { View, Text, StyleSheet, Image, ScrollView, BackHandler, ToastAndroid, Alert, ActivityIndicator } from "react-native";
 
@@ -380,10 +382,10 @@ export default function HomeScreen({ navigation }) {
             {/* Labels */}
             <View style={styles.labels}>
               <Text style={{ color: "#F46334", fontWeight: "600" }}>
-                Esquerdo: {Math.round(Number(percEsquerdo) * 100)}% ({Number(pesoEsquerdo)} Kg)
+                Esq.: {Math.round(Number(percEsquerdo) * 100)}% ({Number(pesoEsquerdo)} Kg)
               </Text>
               <Text style={{ color: "#36985B", fontWeight: "600" }}>
-                Direito: {Math.round(Number(percDireito) * 100)}% ({Number(pesoDireito)} Kg)
+                Dir.: {Math.round(Number(percDireito) * 100)}% ({Number(pesoDireito)} Kg)
               </Text>
             </View>
 
