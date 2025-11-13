@@ -443,7 +443,7 @@ export default function DailyReportPage() {
                                   <p>Peso Direito: {dado.pesoDir} kg</p>
                                   <p>Total: {dado.total} kg</p>
                                   <p>Inclinação: {dado.inclinacao}</p>
-                                  {dado.total > 10 && <p className="text-red-600">⚠️ Peso acima do limite!</p>} {/* Exemplo de alerta */}
+                                  {dado.total > 10 && <p className="text-red-600"> Peso acima do limite!</p>} {/* Exemplo de alerta */}
                                 </div>
                               ))}
                           </div>
