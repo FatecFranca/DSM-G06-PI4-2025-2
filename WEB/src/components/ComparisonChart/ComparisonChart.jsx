@@ -35,8 +35,8 @@ const ComparisonChart = ({ dados = [], titulo = "Comparativo de Peso" }) => {
               labelFormatter={(label) => `Horário: ${label}`}
             />
             <Legend />
-            <Bar dataKey="esquerda" name="Esquerda" fill="#F46334" />
-            <Bar dataKey="direita" name="Direita" fill="#36985B" />
+            <Bar dataKey="esquerda" name="Esquerda" fill="#42be42ff" />
+            <Bar dataKey="direita" name="Direita" fill="#43a047" />
           </BarChart>
         </ResponsiveContainer>
       ) : (

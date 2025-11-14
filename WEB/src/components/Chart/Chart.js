@@ -47,7 +47,7 @@ const Chart = ({ dados = dataExemplo, titulo = "Relatório de Peso (kg)" }) => {
               labelFormatter={(label) => `Dia: ${label}`}
             />
             <Legend />
-            <Bar dataKey="peso" name="Peso" fill="#7DFA48" />
+            <Bar dataKey="peso" name="Peso" fill="#43a047" />
           </BarChart>
         </ResponsiveContainer>
       ) : (
