@@ -99,7 +99,7 @@ export default function LoginPage() {
                 name="UsuarioEmail"
                 placeholder="Seu e-mail"
                 type="email"
-                className="w-full p-3 rounded-3xl bg-[#9FFBF7] focus:outline-none focus:ring-2 focus:ring-green-500"
+                className="w-full p-3 rounded-3xl bg-[#f7f7f7ff] focus:outline-none focus:ring-2 focus:ring-green-500"
                 value={form.UsuarioEmail}
                 onChange={handleChange}
               />
@@ -118,7 +118,7 @@ export default function LoginPage() {
                 name="UsuarioSenha"
                 placeholder="Sua senha"
                 type="password"
-                className="w-full p-3 rounded-3xl bg-[#9FFBF7] focus:outline-none focus:ring-2 focus:ring-green-500"
+                className="w-full p-3 rounded-3xl bg-[#f7f7f7ff] focus:outline-none focus:ring-2 focus:ring-green-500"
                 value={form.UsuarioSenha}
                 onChange={handleChange}
               />

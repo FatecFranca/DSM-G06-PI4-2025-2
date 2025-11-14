@@ -157,7 +157,7 @@ export default function RegisterPage() {
               id="UsuarioNome"
               name="UsuarioNome"
               placeholder="Digite o nome completo"
-              className={`w-full p-3 rounded-3xl bg-[#9FFBF7] focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 ${
+              className={`w-full p-3 rounded-3xl bg-[#f7f7f7ff] focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 ${
                 errors.UsuarioNome ? "ring-2 ring-red-500" : ""
               }`}
               value={form.UsuarioNome}
@@ -175,7 +175,7 @@ export default function RegisterPage() {
               name="UsuarioEmail"
               placeholder="Digite seu e-mail"
               type="email"
-              className={`w-full p-3 rounded-3xl bg-[#9FFBF7] focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 ${
+              className={`w-full p-3 rounded-3xl bg-[#f7f7f7ff] focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 ${
                 errors.UsuarioEmail ? "ring-2 ring-red-500" : ""
               }`}
               value={form.UsuarioEmail}
@@ -193,7 +193,7 @@ export default function RegisterPage() {
               name="UsuarioSenha"
               placeholder="Crie uma senha"
               type="password"
-              className={`w-full p-3 rounded-3xl bg-[#9FFBF7] focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 ${
+              className={`w-full p-3 rounded-3xl bg-[#f7f7f7ff] focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 ${
                 errors.UsuarioSenha ? "ring-2 ring-red-500" : ""
               }`}
               value={form.UsuarioSenha}
@@ -214,7 +214,7 @@ export default function RegisterPage() {
                 type="number"
                 step="0.01"
                 min="0"
-                className={`w-full p-3 rounded-3xl bg-[#9FFBF7] focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 ${
+                className={`w-full p-3 rounded-3xl bg-[#f7f7f7ff] focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 ${
                   errors.UsuarioPeso ? "ring-2 ring-red-500" : ""
                 }`}
                 value={form.UsuarioPeso}
@@ -232,7 +232,7 @@ export default function RegisterPage() {
                 type="number"
                 step="0.01"
                 min="0"
-                className={`w-full p-3 rounded-3xl bg-[#9FFBF7] focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 ${
+                className={`w-full p-3 rounded-3xl bg-[#f7f7f7ff] focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 ${
                   errors.UsuarioAltura ? "ring-2 ring-red-500" : ""
                 }`}
                 value={form.UsuarioAltura}
@@ -250,7 +250,7 @@ export default function RegisterPage() {
               id="UsuarioDtNascimento"
               name="UsuarioDtNascimento"
               type="date"
-              className={`w-full p-3 rounded-3xl bg-[#9FFBF7] focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 ${
+              className={`w-full p-3 rounded-3xl bg-[#f7f7f7ff] focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 ${
                 errors.UsuarioDtNascimento ? "ring-2 ring-red-500" : ""
               }`}
               value={form.UsuarioDtNascimento}
@@ -268,7 +268,7 @@ export default function RegisterPage() {
               name="UsuarioSexo"
               value={form.UsuarioSexo}
               onChange={handleChange}
-              className={`w-full p-3 rounded-3xl bg-[#9FFBF7] text-gray-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 appearance-none ${
+              className={`w-full p-3 rounded-3xl bg-[#f7f7f7ff] text-gray-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 appearance-none ${
                 errors.UsuarioSexo ? "ring-2 ring-red-500" : ""
               }`}
             >
