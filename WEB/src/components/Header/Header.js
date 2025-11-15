@@ -17,14 +17,15 @@ export default function Header() {
 
   // Rotas públicas (quando não logado)
   const publicRoutes = [
-    { href: "/home", label: "Ínicio" },
+    { href: "/start", label: "Ínicio" },
     { href: "/login", label: "Login" },
   ];
 
   // Rotas privadas (quando logado)
   const privateRoutes = [
+    { href: "/home", label: "Ínicio" },
     { href: "/backpack", label: "Mochilas" },
-    { href: "/alerts", label: "Alertas" }, // Vamos adicionar o badge aqui
+    { href: "/alerts", label: "Alertas" }, 
     { href: "/reports", label: "Relatórios" },
     { href: "/profile", label: "Perfil" },
   ];
