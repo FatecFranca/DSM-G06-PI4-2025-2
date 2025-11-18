@@ -31,7 +31,7 @@ O BD foi desenvolvido com o SGBD PostGreSQL, que realiza a sua integração com 
 - Índices avançados: (GIN, BRIN) que são úteis para consultas rápidas em milhões de registros de medições, caso a aplicação venha a suportar tamanha demanda.
 
 
-A APi foi desenvolvida com a estrutura Node.js (JavaScript). Devido aos seguintes fatores:
+A API foi desenvolvida com a estrutura Node.js (JavaScript). Devido aos seguintes fatores:
 
 - Menor curva de aprendizagem: Front-End para a aplicação web será feito em Next , que se baseia em JavaScript. Bem como, o aplicativo mobile será desenvolvido em react native (também JavaScript). Mantendo assim a maior parte do projeto desenvolvida na mesma linguagem, diminuindo a curva de aprendizagem para o desenvolvimento e manutenção.
 
@@ -98,6 +98,39 @@ O Token de Atualização, por outro lado, tem uma vida útil mais longa (Mobile:
 
 O APP MOBILE foi desenvolvido utilizando React Native e Expo. Além de acelerar o processo de desenvolvimento, a utilização do Expo nos oferece ferramentas e bibliotecas prontas que facilitam a integração de recursos como a câmera, notificações e outras funcionalidades do dispositivo. Isso nos garante uma entrega mais rápida e eficiente, mantendo a qualidade e a performance em ambas as plataformas.
 
+Estrutura:
+
+```
+DSM-G06-PI4-2025-2/
+├── API/
+│   ├── .expo/
+│   ├── assets/
+│   ├── node_modules/
+│   └── src/
+│       ├── assets/
+│       ├── components/
+│       │   ├── BottomNav.js
+│       │   └── SettingsModal.js
+│       ├── pages/
+│       │   ├── annualReport.js
+│       │   ├── backpack.js
+│       │   ├── dailyReport.js
+│       │   ├── deleteAccount.js
+│       │   ├── futurePrediction.js
+│       │   ├── home.js
+│       │   ├── main.js
+│       │   ├── monthlyReport.js
+│       │   ├── profile.js
+│       │   ├── reportingOptions.js
+│       │   ├── reports.js
+│       │   └── weeklyReport.js
+│       ├── tasks/
+│       ├── utils/
+│       │   ├── backgroundTask.js
+│       ├── routes.js
+│       └── styles.js
+```
+
 
 O Site WEB foi desenvolvido o framework utilizado é o Next.js (um framework JavaScript), que torna fácil a integração com a API, que é  baseada em Node.js. 
 
@@ -110,6 +143,37 @@ Para alcançar nossos objetivos e melhorar a qualidade do programa web foram usa
 - Tailwind (framework de utilidades CSS);
 
 - ESLint (usado para encontrar erros no código);
+
+Estrutura:
+
+```
+DSM-G06-PI4-2025-2/
+├── WEB/
+│   ├── public/
+│   └── src/
+│       ├── app/
+│       │   ├── alerts/
+│       │   ├── backpack/
+│       │   ├── home/
+│       │        └── page.js
+│       │   ├── hooks/
+│       │   ├── login/
+│       │   ├── profile/
+│       │   ├── register/
+│       │   ├── reports/
+│       ├── global.css
+│       ├── layout.js
+│       ├── not-found.js
+│       └── page.js
+│       ├── components/
+│       ├── jsconfig.json
+│       ├── next.config.mjs
+│       ├── package-lock.json
+│       ├── package
+│       ├── pnpm-lock.yaml
+│       ├── postcss.config.mjs
+│       └── .env
+```
 
 
 A IOT foi desenvolvida utilizando, no código, a linguadem de programação C++.
@@ -126,6 +190,12 @@ Para a sua mantagem, foram uzsados os seguintes componentes:
 
 - 1 Mochila Simples
 
+Circuito:
+<br>
+<img src="Prints/IoT/circuito.png">
+
+Se baseando na montagem e instruções do vídeo do canal [Brincando com Ideias](https://www.youtube.com/watch?v=-qLfybfvsHw)
+
 <br>
 
 ### Diagrama Entidade Relacionamento (DER):
@@ -137,13 +207,11 @@ Para a sua mantagem, foram uzsados os seguintes componentes:
 <br>
 
 ## 📁 Documentação do Projeto
-### 📒 [Documento Final](https://github.com/fatecFranca/DSM-G06-PI4-2025-2/raw/main/docs/Documentacao_Final_Mochila_Inteligente_FATEC.docx?raw=1)
+### 📒 [Documento Final](https://github.com/FatecFranca/DSM-G06-PI4-2025-2/raw/main/Documentacao_Final_Mochila_Inteligente_FATEC.docx?raw=1)
 
-### 📙 [1° Apresentação](https://github.com/fatecFranca/DSM-G06-PI4-2025-2/raw/main/docs/1-Apresentação-PI-4-Semestre.pptx?raw=1)
+### 📙 [1° Apresentação](https://github.com/FatecFranca/DSM-G06-PI4-2025-2/raw/main/1-Apresentação-PI-4-Semestre.pptx?raw=1)
 
-### 📕 [2° Apresentação](https://github.com/fatecFranca/DSM-G06-PI4-2025-2/raw/main/docs/2-Apresentação-PI-4-Semestre.pptx?raw=1)
-
-### 📕 [2° Apresentação](https://github.com/fatecFranca/DSM-G06-PI4-2025-2/raw/main/docs/2-Apresentação-PI-4-Semestre.pptx?raw=1)
+### 📕 [2° Apresentação](https://github.com/FatecFranca/DSM-G06-PI4-2025-2/raw/main/2-Apresentação-PI-4-Semestre.pptx?raw=1)
 
 ### 🎬 [Apresentação em Vídeio](https://youtu.be/Sbo_GT2PBmw)
 
@@ -245,6 +313,19 @@ Previsão Futura
 
 ### IOT
 
+Montagem
+<img src="Prints/IoT/mochila-1.jpg">
+
+<img src="Prints/IoT/mochila-2.jpg">
+
+<img src="Prints/IoT/mochila-3.jpg">
+
+<img src="Prints/IoT/mochila-4.jpg">
+
+<img src="Prints/IoT/mochila-5.jpg">
+
+<img src="Prints/IoT/mochila-6.jpg">
+
 <br><br>
 
 ## 🛠️ Construído com
@@ -272,9 +353,9 @@ Previsão Futura
 
 ## ✒️ Autores
 
-* **[Cláudio de Melo Júnior](https://github.com/Claudio-Fatec)** — Documentação do Projeto, Participação na Montagem IOT, Criação da Apresentação do Projeto;
-* **[João Vitor Nicolau](https://github.com/Joao-Vitor-Nicolau-dos-Santos)** — Desenvolvimento do Site WEB;
-* **[Luís Pedro Dutra Carrocini](https://github.com/luis-pedro-dutra-carrocini)** — Criação do Banco de Dados Relacional, Criação e Documentação da API, Criação do Aplicativo MOBILE, Desenvolvimento do Código IOT, Participação na Criação da Apresentação do Projeto;
+* **[Cláudio de Melo Júnior](https://github.com/Claudio-Fatec)** — Documentação do Projeto, Participação na Montagem IOT, Criação da Apresentação do Projeto, Suporte em atividades Paralelas ao Projeto;
+* **[João Vitor Nicolau](https://github.com/Joao-Vitor-Nicolau-dos-Santos)** — Desenvolvimento do Site WEB, Participação na Montagem IOT, Design do Projeto;
+* **[Luís Pedro Dutra Carrocini](https://github.com/luis-pedro-dutra-carrocini)** — Criação do Banco de Dados Relacional, Criação e Documentação da API, Criação do Aplicativo MOBILE, Desenvolvimento do Código IOT, Montagem do IOT, Participação na Criação da Apresentação do Projeto;
 
 <br>
 
@@ -285,9 +366,10 @@ Agradecemos aos professores que nos acompanharam no curso, e durante esse semest
 * **[Prof. Alessandro Fukuta](https://github.com/alessandro-fukuta)** — Laboratório de Desenvolvimento Web
 * **[Prof. Alexandre Gomes](https://github.com/xandygomes)** — Programação para Dispositivos Móveis I;
 * **[Prof. Erick Nicolau](https://github.com/ericknicolau1)** — Internet das Coisas e Aplicações;
-* **Prof. Maria Luiza Cervi Uzun** — Estatística Aplicada;
+* **[Prof. Maria Luiza Cervi Uzun](https://www.youtube.com/@malucervi392)** — Estatística Aplicada;
 
 ---
 
 Este site foi desenvolvido no início de nossa jornada acadêmica. Temos orgulho deste projeto por ser um dos nossos primeiros — e o primeiro com o envolvimento de IOT! Releve nosso "código de iniciante" 😊.  
 Esperamos que seja útil para você em algum projeto! ❤️
+
