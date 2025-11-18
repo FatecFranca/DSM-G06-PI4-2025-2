@@ -137,17 +137,77 @@ Para a sua mantagem, foram uzsados os seguintes componentes:
 <br>
 
 ## 📁 Documentação do Projeto
-### 📒 [Documento Final]()
+### 📒 [Documento Final](https://github.com/fatecFranca/DSM-G06-PI4-2025-2/raw/main/docs/Documentacao_Final_Mochila_Inteligente_FATEC.docx?raw=1)
 
-### 📙 [1° Apresentação]()
+### 📙 [1° Apresentação](https://github.com/fatecFranca/DSM-G06-PI4-2025-2/raw/main/docs/1-Apresentação-PI-4-Semestre.pptx?raw=1)
 
-### 📕 [2° Apresentação]()
+### 📕 [2° Apresentação](https://github.com/fatecFranca/DSM-G06-PI4-2025-2/raw/main/docs/2-Apresentação-PI-4-Semestre.pptx?raw=1)
+
+### 📕 [2° Apresentação](https://github.com/fatecFranca/DSM-G06-PI4-2025-2/raw/main/docs/2-Apresentação-PI-4-Semestre.pptx?raw=1)
+
+### 🎬 [Apresentação em Vídeio](https://youtu.be/Sbo_GT2PBmw)
 
 <br>
 
 ## 📦 Aparência
 
 ### Web
+
+Inicial
+<img src="Prints/Web/inicial-1.png">
+
+<img src="Prints/Web/inicial-2.png">
+
+<img src="Prints/Web/inicial-3.png">
+
+Login
+<img src="Prints/Web/login.png">
+
+Cadastrar-se
+<img src="Prints/Web/cadastrar-se.png">
+
+Home
+<br>
+<img src="Prints/Web/home.png">
+
+Perfil
+<br>
+<img src="Prints/Web/perfil.png">
+
+Relatórios
+<img src="Prints/Web/relatorios-1.png">
+
+<img src="Prints/Web/relatorios-2.png">
+
+Diário
+<img src="Prints/Web/diario-1.png">
+
+<img src="Prints/Web/diario-2.png">
+
+<img src="Prints/Web/diario-3.png">
+
+Semanal
+<br>
+<img src="Prints/Web/semanal-1.png">
+
+<img src="Prints/Web/semanal-2.png">
+
+<img src="Prints/Web/semanal-3.png">
+
+Mensal
+<br>
+<img src="Prints/Web/mensal-1.png">
+
+<img src="Prints/Web/mensal-2.png">
+
+<img src="Prints/Web/mensal-3.png">
+
+Anual
+<img src="Prints/Web/anual.png">
+
+Previsão Futura
+<img src="Prints/Web/previsaoFutura.png">
+
 
 ### Mobile
 
