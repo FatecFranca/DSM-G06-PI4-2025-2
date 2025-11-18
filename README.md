@@ -336,7 +336,7 @@ Montagem
 * Canvas - Portfólio e diagramas
 * Insomnia - Testes de API (Back-End)
 * Figma - Protótipos da aplicação
-* IA's (ChatGPT e Gemini) - Consultas para crição de códigos diversos, correção de bugs e melhoria em performance
+* IA's (ChatGPT, Gemini, Deepseek e Qwen) - Consultas para crição de códigos diversos, correção de bugs e melhoria em performance
 
 
 **Linguagens e Tecnologias:**
@@ -372,4 +372,5 @@ Agradecemos aos professores que nos acompanharam no curso, e durante esse semest
 
 Este site foi desenvolvido no início de nossa jornada acadêmica. Temos orgulho deste projeto por ser um dos nossos primeiros — e o primeiro com o envolvimento de IOT! Releve nosso "código de iniciante" 😊.  
 Esperamos que seja útil para você em algum projeto! ❤️
+
 
