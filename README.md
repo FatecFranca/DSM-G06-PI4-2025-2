@@ -1,6 +1,7 @@
 # DSM-G06-PI4-2025-2
 Repositório do GRUPO 06 do Projeto Interdisciplinar do 4º semestre DSM 2025/2. Alunos: Cláudio de Melo Júnior, João Vitor Nicolau e Luís Pedro Dutra Carrocini.
 
+
 ---
 <br>
 
@@ -374,5 +375,6 @@ Este site foi desenvolvido no início de nossa jornada acadêmica. Temos orgulho
 Esperamos que seja útil para você em algum projeto! ❤️
 
 
-#   M o c h i l a - I n t e l i g e n t e - S m a r t - B a c k p a c k -  
+#   M o c h i l a - I n t e l i g e n t e - S m a r t - B a c k p a c k - 
+ 
  
